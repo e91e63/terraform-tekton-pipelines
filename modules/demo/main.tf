@@ -339,6 +339,7 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
               },
             ]
           }
+          retries = 3
           taskRef = {
             kind = "Task"
             name = kubernetes_manifest.task_npm.object.metadata.name
@@ -374,6 +375,7 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
               },
             ]
           }
+          retries = 3
           "runAfter" = [
             "npm-lint",
           ]
