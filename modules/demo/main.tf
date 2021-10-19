@@ -225,22 +225,17 @@ resource "kubernetes_manifest" "task_docker_build" {
   }
 }
 
-resource "kubernetes_manifest" "task_npm" {
+resource "kubernetes_manifest" "task_npm_tests" {
   manifest = {
     apiVersion = "tekton.dev/v1alpha1"
     kind       = "Task"
     metadata = {
-      name      = "npm"
+      name      = "npm-tests"
       namespace = kubernetes_namespace.tekton_workers.metadata[0].name
     }
     spec = {
-      description = "Run an NPM command on repos"
+      description = "Run NPM tests on repo"
       params = [
-        {
-          description = "Arguments to pass to NPM"
-          name        = "run_command"
-          type        = "string"
-        },
         {
           default     = "node:16-alpine"
           description = "Node image to run in"
@@ -254,6 +249,12 @@ resource "kubernetes_manifest" "task_npm" {
           type        = "string"
         },
       ]
+      results = [
+        {
+          name        = "version-tag"
+          description = "The version tag to use for the container"
+        },
+      ]
       resources = {
         inputs = [
           {
@@ -264,16 +265,23 @@ resource "kubernetes_manifest" "task_npm" {
       }
       steps = [
         {
+          image     = "$(params.container_image)"
+          name      = "npm-tests"
+          resources = {}
+          script    = file("./npm-tests.sh")
+          workingDir : "$(params.context_path)"
+        },
+        {
           env = [
             {
-              name  = "RUN_COMMAND"
-              value = "$(params.run_command)"
+              name = "RESULTS_FILE"
+              value = "$(results.name.path)"
             }
           ]
           image     = "$(params.container_image)"
-          name      = "npm"
+          name      = "get-version-tag"
           resources = {}
-          script    = file("./npm.sh")
+          script    = file("./get-version-tag.sh")
           workingDir : "$(params.context_path)"
         },
       ]
@@ -316,12 +324,8 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
       ]
       "tasks" = [
         {
-          name = "npm-lint"
+          name = "tests"
           params = [
-            {
-              name  = "run_command"
-              value = "lint"
-            },
             {
               name  = "container_image"
               value = "$(params.npm_container_image)"
@@ -345,20 +349,6 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
             name = kubernetes_manifest.task_npm.object.metadata.name
           }
         },
-        # {
-        #   name = "test"
-        #   resources = {
-        #     inputs = [
-        #       {
-        #         name     = "workspace"
-        #         resource = "my-repo"
-        #       },
-        #     ]
-        #   }
-        #   taskRef = {
-        #     name = "make-test"
-        #   }
-        # },
         {
           name = "build"
           resources = {
@@ -384,53 +374,6 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
             name = kubernetes_manifest.task_docker_build.object.metadata.name
           }
         },
-        # {
-        #   name = "build-frontend"
-        #   resources = {
-        #     inputs = [
-        #       {
-        #         name     = "workspace"
-        #         resource = "my-repo"
-        #       },
-        #     ]
-        #     "outputs" = [
-        #       {
-        #         name     = "image"
-        #         resource = "my-frontend-image"
-        #       },
-        #     ]
-        #   }
-        #   "runAfter" = [
-        #     "test-app",
-        #   ]
-        #   taskRef = {
-        #     name = "kaniko-build-frontend"
-        #   }
-        # },
-        # {
-        #   name = "deploy-all"
-        #   resources = {
-        #     inputs = [
-        #       {
-        #         "from" = [
-        #           "build-app",
-        #         ]
-        #         name     = "my-app-image"
-        #         resource = "my-app-image"
-        #       },
-        #       {
-        #         "from" = [
-        #           "build-frontend",
-        #         ]
-        #         name     = "my-frontend-image"
-        #         resource = "my-frontend-image"
-        #       },
-        #     ]
-        #   }
-        #   taskRef = {
-        #     name = "deploy-kubectl"
-        #   }
-        # },
       ]
     }
   }
