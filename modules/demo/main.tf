@@ -185,6 +185,11 @@ resource "kubernetes_manifest" "task_docker_build" {
           name        = "context_path"
           type        = "string"
         },
+        {
+          description = "The Docker image version tag"
+          name        = "version_tag"
+          type        = "string"
+        },
       ]
       resources = {
         inputs = [
@@ -200,30 +205,11 @@ resource "kubernetes_manifest" "task_docker_build" {
           },
         ]
       }
-      results = [
-        {
-          name        = "version-tag"
-          description = "The version tag to use for the container"
-        },
-      ]
       steps = [
-        {
-          env = [
-            {
-              name  = "RESULTS_FILE"
-              value = "$(results.version-tag.path)"
-            }
-          ]
-          image     = "alpine"
-          name      = "get-version-tag"
-          resources = {}
-          script    = file("./get-version-tag.sh")
-          workingDir : "$(params.context_path)"
-        },
         {
           args = [
             "--dockerfile=$(inputs.params.dockerfile_path)",
-            "--destination=$(outputs.resources.docker-image.url):$(results.version-tag)",
+            "--destination=$(outputs.resources.docker-image.url):$(inputs.params.version_tag)",
             "--context=$(inputs.params.context_path)",
           ]
           command = [
@@ -236,7 +222,7 @@ resource "kubernetes_manifest" "task_docker_build" {
             },
           ]
           image     = "gcr.io/kaniko-project/executor:v1.6.0"
-          name      = "build-and-push"
+          name      = "container-build"
           resources = {}
         },
       ]
@@ -289,6 +275,147 @@ resource "kubernetes_manifest" "task_npm_tests" {
   }
 }
 
+resource "kubernetes_manifest" "task_npm_test_e2e" {
+  manifest = {
+    apiVersion = "tekton.dev/v1alpha1"
+    kind       = "Task"
+    metadata = {
+      name      = "npm-test-e2e"
+      namespace = kubernetes_namespace.tekton_workers.metadata[0].name
+    }
+    spec = {
+      description = "Run NPM cypress test on repo"
+      params = [
+        {
+          default     = "cypress/base:16.5.0"
+          description = "Node image to run in"
+          name        = "container_image"
+          type        = "string"
+        },
+        {
+          default     = "$(resources.inputs.git-repo.path)"
+          description = "Directory with package.json"
+          name        = "context_path"
+          type        = "string"
+        },
+      ]
+      resources = {
+        inputs = [
+          {
+            name = "git-repo"
+            type = "git"
+          },
+        ]
+      }
+      steps = [
+        {
+          image     = "$(params.container_image)"
+          name      = "npm-test-e2e"
+          resources = {}
+          script    = file("./npm-test-e2e.sh")
+          workingDir : "$(params.context_path)"
+        },
+      ]
+    }
+  }
+}
+
+resource "kubernetes_manifest" "task_npm_version_tag" {
+  manifest = {
+    apiVersion = "tekton.dev/v1alpha1"
+    kind       = "Task"
+    metadata = {
+      name      = "npm-version-tag"
+      namespace = kubernetes_namespace.tekton_workers.metadata[0].name
+    }
+    spec = {
+      description = "Get version of NPM package"
+      params = [
+        {
+          default     = "$(resources.inputs.git-repo.path)"
+          description = "Directory with package.json"
+          name        = "context_path"
+          type        = "string"
+        },
+      ]
+      resources = {
+        inputs = [
+          {
+            name = "git-repo"
+            type = "git"
+          },
+        ]
+      }
+      results = [
+        {
+          name        = "version-tag"
+          description = "The version tag to use for the container"
+        },
+      ]
+      steps = [
+        {
+          env = [
+            {
+              name  = "RESULTS_PATH"
+              value = "$(results.version-tag.path)"
+            }
+          ]
+          image     = "alpine"
+          name      = "npm-version-tag"
+          resources = {}
+          script    = file("./npm-version-tag.sh")
+          workingDir : "$(params.context_path)"
+        },
+      ]
+    }
+  }
+}
+
+# resource "kubernetes_manifest" "task_container_deploy" {
+#   manifest = {
+#     apiVersion = "tekton.dev/v1alpha1"
+#     kind       = "Task"
+#     metadata = {
+#       name      = "container-deploy"
+#       namespace = kubernetes_namespace.tekton_workers.metadata[0].name
+#     }
+#     spec = {
+#       description = "Deploy container to infrastructure"
+#       params = [
+#         {
+#           default     = "$(resources.inputs.git-repo.path)"
+#           description = "Directory in repo with terragrunt.hcl"
+#           name        = "context_path"
+#           type        = "string"
+#         },
+#       ]
+#       resources = {
+#         inputs = [
+#           {
+#             name = "git-repo"
+#             type = "git"
+#           },
+#         ]
+#       }
+#       steps = [
+#         {
+#           env = [
+#             {
+#               name  = "RESULTS_PATH"
+#               value = "$(results.version-tag.path)"
+#             }
+#           ]
+#           image     = "alpine"
+#           name      = "npm-version-tag"
+#           resources = {}
+#           script    = file("./npm-version-tag.sh")
+#           workingDir : "$(params.context_path)"
+#         },
+#       ]
+#     }
+#   }
+# }
+
 resource "kubernetes_manifest" "pipeline_javascript_cicd" {
   manifest = {
     apiVersion = "tekton.dev/v1beta1"
@@ -299,6 +426,12 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
     }
     spec = {
       params = [
+        {
+          default     = "cypress/base:16.5.0"
+          description = "Cypress image to run in"
+          name        = "cypress_container_image"
+          type        = "string"
+        },
         {
           default     = "node:16-alpine"
           description = "Node image to run in"
@@ -349,7 +482,59 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
           }
         },
         {
+          name = "test-e2e"
+          params = [
+            {
+              name  = "container_image"
+              value = "$(params.cypress_container_image)"
+            },
+            {
+              name  = "context_path"
+              value = "$(params.npm_context_path)"
+            },
+          ]
+          resources = {
+            inputs = [
+              {
+                name     = "git-repo"
+                resource = "git-repo"
+              },
+            ]
+          }
+          taskRef = {
+            kind = "Task"
+            name = kubernetes_manifest.task_npm_test_e2e.object.metadata.name
+          }
+        },
+        {
+          name = "version-tag"
+          params = [
+            {
+              name  = "context_path"
+              value = "$(params.npm_context_path)"
+            },
+          ]
+          resources = {
+            inputs = [
+              {
+                name     = "git-repo"
+                resource = "git-repo"
+              },
+            ]
+          }
+          taskRef = {
+            kind = "Task"
+            name = kubernetes_manifest.task_npm_version_tag.object.metadata.name
+          }
+        },
+        {
           name = "build"
+          params = [
+            {
+              name  = "version_tag"
+              value = "$(tasks.version-tag.results.version-tag)"
+            },
+          ]
           resources = {
             inputs = [
               {
@@ -366,6 +551,8 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
           }
           "runAfter" = [
             "tests",
+            "test-e2e",
+            "version-tag",
           ]
           taskRef = {
             kind = "Task"

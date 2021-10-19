@@ -9,20 +9,18 @@ echo "Installing dependencies"
 apk add "git" "jq"
 
 echo "Getting version from package.json"
-VERSION=$(jq -r ".version" package.json)
-VERSION_TAG="v${VERSION}"
+VERSION="v$(jq -r ".version" package.json)"
 
-echo "Checking git commit for ${VERSION_TAG}"
+echo "Checking git commit for tag ${VERSION}"
 TAGS=$(git tag --list --contains HEAD)
 
-DEV_TAG=""
-if ! (echo "${TAGS}" | grep -q "${VERSION_TAG}"); then
+if ! (echo "${TAGS}" | grep -q "${VERSION}"); then
     GIT_COMMIT=$(git rev-parse --short HEAD)
-    DEV_TAG="-dev-${GIT_COMMIT}"
+    VERSION="${VERSION}-dev-${GIT_COMMIT}"
 fi
-# TODO: bump package.json
+# TODO: else bump package.json
 
-echo "Writing tag to results"
-echo "${VERSION_TAG}${DEV_TAG}" >"${RESULTS_PATH}"
-cat "$RESULTS_PATH"
+echo "Writing tag ${VERSION} to results"
+printf "%s" "${VERSION}" >"${RESULTS_PATH}"
+
 echo "Finished $(basename "${0}")"
