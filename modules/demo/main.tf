@@ -200,11 +200,30 @@ resource "kubernetes_manifest" "task_docker_build" {
           },
         ]
       }
+      results = [
+        {
+          name        = "version-tag"
+          description = "The version tag to use for the container"
+        },
+      ]
       steps = [
+        {
+          env = [
+            {
+              name  = "RESULTS_FILE"
+              value = "$(results.version-tag.path)"
+            }
+          ]
+          image     = "alpine"
+          name      = "get-version-tag"
+          resources = {}
+          script    = file("./get-version-tag.sh")
+          workingDir : "$(params.context_path)"
+        },
         {
           args = [
             "--dockerfile=$(inputs.params.dockerfile_path)",
-            "--destination=$(outputs.resources.docker-image.url)",
+            "--destination=$(outputs.resources.docker-image.url):$(results.version-tag)",
             "--context=$(inputs.params.context_path)",
           ]
           command = [
@@ -249,12 +268,6 @@ resource "kubernetes_manifest" "task_npm_tests" {
           type        = "string"
         },
       ]
-      results = [
-        {
-          name        = "version-tag"
-          description = "The version tag to use for the container"
-        },
-      ]
       resources = {
         inputs = [
           {
@@ -269,19 +282,6 @@ resource "kubernetes_manifest" "task_npm_tests" {
           name      = "npm-tests"
           resources = {}
           script    = file("./npm-tests.sh")
-          workingDir : "$(params.context_path)"
-        },
-        {
-          env = [
-            {
-              name = "RESULTS_FILE"
-              value = "$(results.name.path)"
-            }
-          ]
-          image     = "$(params.container_image)"
-          name      = "get-version-tag"
-          resources = {}
-          script    = file("./get-version-tag.sh")
           workingDir : "$(params.context_path)"
         },
       ]
@@ -343,10 +343,9 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
               },
             ]
           }
-          retries = 3
           taskRef = {
             kind = "Task"
-            name = kubernetes_manifest.task_npm.object.metadata.name
+            name = kubernetes_manifest.task_npm_tests.object.metadata.name
           }
         },
         {
@@ -365,9 +364,8 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
               },
             ]
           }
-          retries = 3
           "runAfter" = [
-            "npm-lint",
+            "tests",
           ]
           taskRef = {
             kind = "Task"
