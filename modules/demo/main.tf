@@ -1,57 +1,8 @@
-resource "kubernetes_manifest" "task_echo_hello_world" {
-  depends_on = [kubernetes_namespace.tekton_workers]
-
-  manifest = {
-    apiVersion = "tekton.dev/v1alpha1"
-    kind       = "Task"
-    metadata = {
-      name      = "echo-hello-world"
-      namespace = kubernetes_namespace.tekton_workers.metadata[0].name
-    }
-    spec = {
-      steps = [
-        {
-          args = [
-            "HelloWorld",
-          ]
-          command = [
-            "echo",
-          ]
-          image     = "ubuntu"
-          name      = "echo"
-          resources = {}
-        },
-      ]
-    }
-  }
-}
-
-resource "kubernetes_manifest" "taskrun_echo_hello_world_task_run" {
-  depends_on = [kubernetes_namespace.tekton_workers]
-  manifest = {
-    apiVersion = "tekton.dev/v1alpha1"
-    kind       = "TaskRun"
-    metadata = {
-      annotations = {
-        "pipeline.tekton.dev/release" = "f8c2eea"
-      }
-      labels = {
-        "app.kubernetes.io/managed-by" = "tekton-pipelines"
-        "tekton.dev/task"              = "echo-hello-world"
-      }
-      name      = "echo-hello-world-task-run"
-      namespace = kubernetes_namespace.tekton_workers.metadata[0].name
-    }
-    spec = {
-      serviceAccountName = kubernetes_service_account.main.metadata[0].name
-      taskRef = {
-        kind = "Task"
-        name = "echo-hello-world"
-      }
-      timeout = "1h0m0s"
-    }
-  }
-}
+# pipelines:
+# plain container
+# javascript
+# go
+# terraform
 
 resource "kubernetes_secret" "gitlab" {
   metadata {
@@ -142,6 +93,30 @@ resource "kubernetes_manifest" "pipeline_resource_git_repo_cddc39_todo" {
   }
 }
 
+resource "kubernetes_manifest" "pipeline_resource_git_repo_dmikalova_infrastructure" {
+  manifest = {
+    apiVersion = "tekton.dev/v1alpha1"
+    kind       = "PipelineResource"
+    metadata = {
+      name      = "git-repo-infrastructure"
+      namespace = kubernetes_namespace.tekton_workers.metadata[0].name
+    }
+    spec = {
+      params = [
+        {
+          name  = "revision"
+          value = "main"
+        },
+        {
+          name  = "url"
+          value = "git@gitlab.com:dmikalova/infrastructure.git"
+        },
+      ]
+      type = "git"
+    }
+  }
+}
+
 resource "kubernetes_manifest" "pipeline_resource_docker_todo" {
   manifest = {
     apiVersion = "tekton.dev/v1alpha1"
@@ -208,9 +183,10 @@ resource "kubernetes_manifest" "task_docker_build" {
       steps = [
         {
           args = [
-            "--dockerfile=$(inputs.params.dockerfile_path)",
-            "--destination=$(outputs.resources.docker-image.url):$(inputs.params.version_tag)",
             "--context=$(inputs.params.context_path)",
+            "--destination=$(outputs.resources.docker-image.url):$(inputs.params.version_tag)",
+            "--dockerfile=$(inputs.params.dockerfile_path)",
+            "--oci-layout-path=$(inputs.resources.docker-image.path)"
           ]
           command = [
             "/kaniko/executor",
@@ -371,50 +347,57 @@ resource "kubernetes_manifest" "task_npm_version_tag" {
   }
 }
 
-# resource "kubernetes_manifest" "task_container_deploy" {
-#   manifest = {
-#     apiVersion = "tekton.dev/v1alpha1"
-#     kind       = "Task"
-#     metadata = {
-#       name      = "container-deploy"
-#       namespace = kubernetes_namespace.tekton_workers.metadata[0].name
-#     }
-#     spec = {
-#       description = "Deploy container to infrastructure"
-#       params = [
-#         {
-#           default     = "$(resources.inputs.git-repo.path)"
-#           description = "Directory in repo with terragrunt.hcl"
-#           name        = "context_path"
-#           type        = "string"
-#         },
-#       ]
-#       resources = {
-#         inputs = [
-#           {
-#             name = "git-repo"
-#             type = "git"
-#           },
-#         ]
-#       }
-#       steps = [
-#         {
-#           env = [
-#             {
-#               name  = "RESULTS_PATH"
-#               value = "$(results.version-tag.path)"
-#             }
-#           ]
-#           image     = "alpine"
-#           name      = "npm-version-tag"
-#           resources = {}
-#           script    = file("./npm-version-tag.sh")
-#           workingDir : "$(params.context_path)"
-#         },
-#       ]
-#     }
-#   }
-# }
+resource "kubernetes_manifest" "task_container_deploy" {
+  manifest = {
+    apiVersion = "tekton.dev/v1alpha1"
+    kind       = "Task"
+    metadata = {
+      name      = "container-deploy"
+      namespace = kubernetes_namespace.tekton_workers.metadata[0].name
+    }
+    spec = {
+      description = "Deploy container to infrastructure"
+      params = [
+        {
+          default     = "$(results.version-tag.path)"
+          description = "Image tag to deploy"
+          name        = "container_image"
+          type        = "string"
+        },
+        {
+          default     = "$(resources.inputs.git-repo.path)"
+          description = "Directory with terragrunt.hcl"
+          name        = "context_path"
+          type        = "string"
+        },
+      ]
+      resources = {
+        inputs = [
+          {
+            name = "git-repo"
+            type = "git"
+          },
+        ]
+      }
+      steps = [
+        {
+          env = [
+            {
+              name  = "CONTAINER_IMAGE"
+              value = "$(params.container_image)"
+            }
+          ]
+          # TODO: Create deploy container
+          image     = "alpine/terragrunt"
+          name      = "container-deploy"
+          resources = {}
+          script    = file("./container-deploy.sh")
+          workingDir : "$(params.context_path)"
+        },
+      ]
+    }
+  }
+}
 
 resource "kubernetes_manifest" "pipeline_javascript_cicd" {
   manifest = {
@@ -441,7 +424,13 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
         {
           default     = "$(resources.inputs.git-repo.path)"
           description = "Directory with package.json"
-          name        = "npm_context_path"
+          name        = "context_path_npm"
+          type        = "string"
+        },
+        {
+          default     = "$(inputs.resources.git-repo.path)/digitalocean/cddc39/services/todo"
+          description = "Directory with terragrunt.hcl"
+          name        = "context_path_terragrunt"
           type        = "string"
         },
       ]
@@ -451,7 +440,11 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
           type = "image"
         },
         {
-          name = "git-repo"
+          name = "git-repo-npm"
+          type = "git"
+        },
+        {
+          name = "git-repo-infrastructure"
           type = "git"
         },
       ]
@@ -465,14 +458,14 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
             },
             {
               name  = "context_path"
-              value = "$(params.npm_context_path)"
+              value = "$(params.context_path_npm)"
             },
           ]
           resources = {
             inputs = [
               {
                 name     = "git-repo"
-                resource = "git-repo"
+                resource = "git-repo-npm"
               },
             ]
           }
@@ -490,14 +483,14 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
             },
             {
               name  = "context_path"
-              value = "$(params.npm_context_path)"
+              value = "$(params.context_path_npm)"
             },
           ]
           resources = {
             inputs = [
               {
                 name     = "git-repo"
-                resource = "git-repo"
+                resource = "git-repo-npm"
               },
             ]
           }
@@ -511,14 +504,14 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
           params = [
             {
               name  = "context_path"
-              value = "$(params.npm_context_path)"
+              value = "$(params.context_path_npm)"
             },
           ]
           resources = {
             inputs = [
               {
                 name     = "git-repo"
-                resource = "git-repo"
+                resource = "git-repo-npm"
               },
             ]
           }
@@ -539,7 +532,7 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
             inputs = [
               {
                 name     = "git-repo"
-                resource = "git-repo"
+                resource = "git-repo-npm"
               },
             ]
             "outputs" = [
@@ -557,6 +550,36 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
           taskRef = {
             kind = "Task"
             name = kubernetes_manifest.task_docker_build.object.metadata.name
+          }
+        },
+        {
+          name = "deploy"
+          params = [
+            {
+              # TODO: get this from build digest
+              name  = "container_image"
+              value = "$(tasks.version-tag.results.version-tag)"
+            },
+            {
+              name  = "context_path"
+              value = "$(params.context_path_terragrunt)"
+            },
+          ]
+          resources = {
+            inputs = [
+              {
+                name     = "git-repo"
+                resource = "git-repo-infrastructure"
+              },
+            ]
+          }
+          "runAfter" = [
+            "build",
+            "version-tag",
+          ]
+          taskRef = {
+            kind = "Task"
+            name = kubernetes_manifest.task_container_deploy.object.metadata.name
           }
         },
       ]
