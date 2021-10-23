@@ -1,6 +1,5 @@
 terraform {
-  experiments      = [module_variable_optional_attrs]
-  required_version = "~> 1"
+  experiments = [module_variable_optional_attrs]
   required_providers {
     digitalocean = {
       source  = "digitalocean/digitalocean"
@@ -11,4 +10,5 @@ terraform {
       version = "~> 2"
     }
   }
+  required_version = "~> 1"
 }
