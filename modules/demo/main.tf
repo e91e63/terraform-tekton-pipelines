@@ -392,11 +392,42 @@ resource "kubernetes_manifest" "task_container_deploy" {
           name      = "container-deploy"
           resources = {}
           script    = file("./container-deploy.sh")
-          workingDir : "$(params.context_path)"
+          volumeMounts = [
+            {
+              name      = "age"
+              mountPath = "/root/.config/sops/age"
+            }
+          ]
+          workingDir = "$(params.context_path)"
+        },
+      ],
+      volumes = [
+        {
+          name = "age"
+          secret = {
+            secretName = kubernetes_secret.age.metadata[0].name
+            # namespace = kubernetes_secret.age.metadata.namespace
+          }
         },
       ]
     }
   }
+}
+
+resource "kubernetes_secret" "age" {
+  metadata {
+    # annotations = {
+    #   "tekton.dev/git-${var.git_conf.domain}" = var.git_conf.domain
+    # }
+    name      = "age-keys-file"
+    namespace = kubernetes_namespace.tekton_workers.metadata[0].name
+  }
+
+  data = {
+    "keys.txt" = base64decode(var.tekton_conf.age_keys_file_base64)
+  }
+
+  type = "Opaque"
 }
 
 resource "kubernetes_manifest" "pipeline_javascript_cicd" {
@@ -449,56 +480,56 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
         },
       ]
       "tasks" = [
-        {
-          name = "tests"
-          params = [
-            {
-              name  = "container_image"
-              value = "$(params.npm_container_image)"
-            },
-            {
-              name  = "context_path"
-              value = "$(params.context_path_npm)"
-            },
-          ]
-          resources = {
-            inputs = [
-              {
-                name     = "git-repo"
-                resource = "git-repo-npm"
-              },
-            ]
-          }
-          taskRef = {
-            kind = "Task"
-            name = kubernetes_manifest.task_npm_tests.object.metadata.name
-          }
-        },
-        {
-          name = "test-e2e"
-          params = [
-            {
-              name  = "container_image"
-              value = "$(params.cypress_container_image)"
-            },
-            {
-              name  = "context_path"
-              value = "$(params.context_path_npm)"
-            },
-          ]
-          resources = {
-            inputs = [
-              {
-                name     = "git-repo"
-                resource = "git-repo-npm"
-              },
-            ]
-          }
-          taskRef = {
-            kind = "Task"
-            name = kubernetes_manifest.task_npm_test_e2e.object.metadata.name
-          }
-        },
+        # {
+        #   name = "tests"
+        #   params = [
+        #     {
+        #       name  = "container_image"
+        #       value = "$(params.npm_container_image)"
+        #     },
+        #     {
+        #       name  = "context_path"
+        #       value = "$(params.context_path_npm)"
+        #     },
+        #   ]
+        #   resources = {
+        #     inputs = [
+        #       {
+        #         name     = "git-repo"
+        #         resource = "git-repo-npm"
+        #       },
+        #     ]
+        #   }
+        #   taskRef = {
+        #     kind = "Task"
+        #     name = kubernetes_manifest.task_npm_tests.object.metadata.name
+        #   }
+        # },
+        # {
+        #   name = "test-e2e"
+        #   params = [
+        #     {
+        #       name  = "container_image"
+        #       value = "$(params.cypress_container_image)"
+        #     },
+        #     {
+        #       name  = "context_path"
+        #       value = "$(params.context_path_npm)"
+        #     },
+        #   ]
+        #   resources = {
+        #     inputs = [
+        #       {
+        #         name     = "git-repo"
+        #         resource = "git-repo-npm"
+        #       },
+        #     ]
+        #   }
+        #   taskRef = {
+        #     kind = "Task"
+        #     name = kubernetes_manifest.task_npm_test_e2e.object.metadata.name
+        #   }
+        # },
         {
           name = "version-tag"
           params = [
@@ -520,38 +551,38 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
             name = kubernetes_manifest.task_npm_version_tag.object.metadata.name
           }
         },
-        {
-          name = "build"
-          params = [
-            {
-              name  = "version_tag"
-              value = "$(tasks.version-tag.results.version-tag)"
-            },
-          ]
-          resources = {
-            inputs = [
-              {
-                name     = "git-repo"
-                resource = "git-repo-npm"
-              },
-            ]
-            "outputs" = [
-              {
-                name     = "docker-image"
-                resource = "docker-image"
-              },
-            ]
-          }
-          "runAfter" = [
-            "tests",
-            "test-e2e",
-            "version-tag",
-          ]
-          taskRef = {
-            kind = "Task"
-            name = kubernetes_manifest.task_docker_build.object.metadata.name
-          }
-        },
+        # {
+        #   name = "build"
+        #   params = [
+        #     {
+        #       name  = "version_tag"
+        #       value = "$(tasks.version-tag.results.version-tag)"
+        #     },
+        #   ]
+        #   resources = {
+        #     inputs = [
+        #       {
+        #         name     = "git-repo"
+        #         resource = "git-repo-npm"
+        #       },
+        #     ]
+        #     "outputs" = [
+        #       {
+        #         name     = "docker-image"
+        #         resource = "docker-image"
+        #       },
+        #     ]
+        #   }
+        #   "runAfter" = [
+        #     "tests",
+        #     "test-e2e",
+        #     "version-tag",
+        #   ]
+        #   taskRef = {
+        #     kind = "Task"
+        #     name = kubernetes_manifest.task_docker_build.object.metadata.name
+        #   }
+        # },
         {
           name = "deploy"
           params = [
@@ -574,7 +605,7 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
             ]
           }
           "runAfter" = [
-            "build",
+            # "build",
             "version-tag",
           ]
           taskRef = {

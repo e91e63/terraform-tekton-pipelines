@@ -1,3 +1,9 @@
+variable "container_registry_info" {
+  type = object({
+    name = string
+  })
+}
+
 variable "git_conf" {
   type = object({
     domain          = string
@@ -6,8 +12,8 @@ variable "git_conf" {
   })
 }
 
-variable "container_registry_info" {
+variable "tekton_conf" {
   type = object({
-    name = string
+    age_keys_file_base64 = string
   })
 }
