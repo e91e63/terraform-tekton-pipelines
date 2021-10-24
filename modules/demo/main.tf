@@ -59,6 +59,7 @@ resource "kubernetes_service_account" "main" {
   }
 }
 
+# TODO: apply this before anything else
 resource "kubernetes_namespace" "tekton_workers" {
   metadata {
     labels = {
