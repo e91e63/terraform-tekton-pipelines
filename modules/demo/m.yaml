@@ -1,46 +1,20 @@
 apiVersion: triggers.tekton.dev/v1alpha1
-kind: TriggerTemplate
+kind: EventListener
 metadata:
-  name: build-push-image-template
-  namespace: default
+  name: build-push-image-tekton-trigger-listener
 spec:
-  params:
-    - name: dockerfile-path
-      description: dockerfile-path.
-    - name: image-url
-      description: image-url.
-    - name: path-to-context
-      description: path-to-context.
-  resourcetemplates:
-    - apiVersion: tekton.dev/v1beta1
-      kind: PipelineRun
-      metadata:
-        generateName: pipelinerun-build-push-image-$(uid)
-        namespace: default
-      spec:
-        serviceAccountName: git-serviceaccount
-        pipelineRef:
-          name: pipeline-build-push-image
-        resources:
-          - name: input-git
-            resourceRef:
-              name: go-api-skeleton-git
-          - name: output-image
-            resourceRef:
-              name: go-api-skeleton-image
-        workspaces:
-          - name: shared-data
-            volumeClaimTemplate:
-              spec:
-                accessModes:
-                  - ReadWriteOnce
-                resources:
-                  requests:
-                    storage: 1Gi
-        params:
-          - name: dockerfile-path
-            value: "./Dockerfile"
-          - name: image-url
-            value: "yossicohn/app"
-          - name: path-to-context
-            value: "workspace/shared-data"
+  serviceAccountName: service-tekton-triggers-sa
+  triggers:
+    - name: github-listener
+      interceptors:
+        - github:
+            secretRef:
+              secretName: github-secret
+              secretKey: secretToken
+            eventTypes:
+              - pull_request
+              - push
+      bindings:
+        - ref: build-push-image-pipeline-binding
+      template:
+        ref: build-push-image-template

@@ -658,6 +658,12 @@ resource "kubernetes_manifest" "trigger_template_javascript_cicd_pipeline" {
       namespace = kubernetes_namespace.tekton_workers.metadata[0].name
     }
     spec = {
+      params = [
+        {
+          description = "The SSH URL of the git repo with an npm package to build"
+          name        = "git-repo-npm-url"
+        },
+      ]
       resourcetemplates = [
         {
           apiVersion = "tekton.dev/v1beta1"
@@ -673,20 +679,42 @@ resource "kubernetes_manifest" "trigger_template_javascript_cicd_pipeline" {
             resources = [
               {
                 name = "docker-image"
-                resourceRef = {
-                  name = kubernetes_manifest.pipeline_resource_docker_todo.object.metadata.name
-                }
-              },
-              {
-                name = "git-repo-npm"
-                resourceRef = {
-                  name = kubernetes_manifest.pipeline_resource_git_repo_cddc39_todo.object.metadata.name
+                resourceSpec = {
+                  name = "todo-image"
+                  params = [
+                    {
+                      name  = "url"
+                      value = "registry.digitalocean.com/dmikalova/todo"
+                    },
+                  ]
                 }
               },
               {
                 name = "git-repo-infrastructure"
                 resourceRef = {
                   name = kubernetes_manifest.pipeline_resource_git_repo_dmikalova_infrastructure.object.metadata.name
+                  type = "git"
+                }
+              },
+              {
+                name = "git-repo-npm"
+                resourceSpec = {
+                  name = kubernetes_manifest.pipeline_resource_git_repo_cddc39_todo.object.metadata.name
+                  params = [
+                    {
+                      name  = "refspec"
+                      value = "refs/heads/main:refs/heads/main"
+                    },
+                    {
+                      name  = "revision"
+                      value = "main"
+                    },
+                    {
+                      name  = "url"
+                      value = "$(tt.params.git-repo-npm-url)"
+                    },
+                  ]
+                  type = "git"
                 }
               },
             ]
@@ -695,5 +723,93 @@ resource "kubernetes_manifest" "trigger_template_javascript_cicd_pipeline" {
         },
       ]
     }
+  }
+}
+
+resource "kubernetes_manifest" "trigger_binding_javascript_cicd_pipeline" {
+  manifest = {
+    apiVersion = "triggers.tekton.dev/v1alpha1"
+    kind       = "TriggerBinding"
+    metadata = {
+      name = "javascript-cicd-pipeline"
+    }
+    spec = {
+      params = [
+        {
+          name  = "git-repo-npm-url"
+          value = "$(body.repository.git_ssh_url)"
+        },
+      ]
+    }
+  }
+}
+resource "kubernetes_manifest" "event_listener_gitlab_javascript_cicd_pipeline" {
+  manifest = {
+    apiVersion = "triggers.tekton.dev/v1alpha1"
+    kind       = "EventListener"
+    metadata = {
+      name = "javascript-cicd-pipeline"
+    }
+    spec = {
+      serviceAccountName = kubernetes_service_account.main.metadata[0].name
+      triggers = [
+        {
+          bindings = [
+            {
+              ref = kubernetes_manifest.trigger_binding_javascript_cicd_pipeline.object.metadata[0].name
+            },
+          ]
+          interceptors = [
+            {
+              gitlab = {
+                eventTypes = [
+                  "push",
+                ]
+                secretRef = {
+                  secretKey  = "secret-token"
+                  secretName = kubernetes_manifest.gitlab_webhook_secret_token.object.metadata[0].name
+                }
+              }
+            },
+          ]
+          name = "gitlab-listener"
+          template = {
+            ref = kubernetes_manifest.trigger_template_javascript_cicd_pipeline.object.metadata[0].name
+          }
+        },
+      ]
+    }
+  }
+}
+
+resource "random_password" "gitlab_webhook_secret_token" {
+  length  = 16
+  special = true
+}
+
+resource "kubernetes_secret" "gitlab_webhook_secret_token" {
+  data = {
+    "secret-token" = random_password.gitlab_webhook_secret_token.result
+  }
+  metadata {
+    name      = "gitlab-webhook-secret-token"
+    namespace = kubernetes_namespace.tekton_workers.metadata[0].name
+  }
+  type = "Opaque"
+}
+
+module "ingress_route" {
+  source = "git@gitlab.com:e91e63/terraform-kubernetes-manifests.git//modules/traefik-ingress-route"
+
+  domain_info = var.domain_info
+  route_conf = {
+    middlewares  = []
+    path         = kubernetes_manifest.event_listener_gitlab_javascript_cicd_pipeline.object.metdata[0].name
+    service_name = "webhooks.tekton"
+    service_port = 8080
+  }
+  service_conf = {
+    name      = "el-${kubernetes_manifest.event_listener_gitlab_javascript_cicd_pipeline.object.metdata[0].name}"
+    namespace = kubernetes_namespace.tekton_workers.metadata[0].name
   }
 }

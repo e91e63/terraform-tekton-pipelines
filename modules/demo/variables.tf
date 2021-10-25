@@ -4,6 +4,11 @@ variable "container_registry_info" {
   })
 }
 
+variable "domain_info" {
+  default = {}
+  type    = any
+}
+
 variable "git_conf" {
   type = object({
     domain          = string
