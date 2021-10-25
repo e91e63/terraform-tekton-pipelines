@@ -13,7 +13,10 @@ variable "git_conf" {
 }
 
 variable "tekton_conf" {
+  sensitive = true
   type = object({
-    age_keys_file_base64 = string
+    age_keys_file_base64       = string
+    digitalocean_spaces_key    = string
+    digitalocean_spaces_secret = string
   })
 }

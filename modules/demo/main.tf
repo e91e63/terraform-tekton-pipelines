@@ -31,6 +31,9 @@ data "digitalocean_container_registry" "main" {
 }
 
 resource "kubernetes_secret" "docker" {
+  data = {
+    ".dockerconfigjson" = digitalocean_container_registry_docker_credentials.main.docker_credentials
+  }
   metadata {
     annotations = {
       "tekton.dev/docker-registry.digitalocean.com" = "registrydigitalocean.com"
@@ -38,11 +41,6 @@ resource "kubernetes_secret" "docker" {
     name      = "docker-registry-${var.container_registry_info.name}-credentials"
     namespace = kubernetes_namespace.tekton_workers.metadata[0].name
   }
-
-  data = {
-    ".dockerconfigjson" = digitalocean_container_registry_docker_credentials.main.docker_credentials
-  }
-
   type = "kubernetes.io/dockerconfigjson"
 }
 
@@ -104,6 +102,10 @@ resource "kubernetes_manifest" "pipeline_resource_git_repo_dmikalova_infrastruct
     }
     spec = {
       params = [
+        {
+          name  = "refspec"
+          value = "refs/heads/main:refs/heads/main "
+        },
         {
           name  = "revision"
           value = "main"
@@ -181,13 +183,20 @@ resource "kubernetes_manifest" "task_docker_build" {
           },
         ]
       }
+      results = [
+        {
+          name        = "image-digest"
+          description = "Digest of the built image"
+        }
+      ]
       steps = [
         {
           args = [
             "--context=$(inputs.params.context_path)",
             "--destination=$(outputs.resources.docker-image.url):$(inputs.params.version_tag)",
             "--dockerfile=$(inputs.params.dockerfile_path)",
-            "--oci-layout-path=$(inputs.resources.docker-image.path)"
+            "--image-name-tag-with-digest-file=$(results.image-digest.path)",
+            "--oci-layout-path=$(outputs.resources.docker-image.path)"
           ]
           command = [
             "/kaniko/executor",
@@ -360,7 +369,6 @@ resource "kubernetes_manifest" "task_container_deploy" {
       description = "Deploy container to infrastructure"
       params = [
         {
-          default     = "$(results.version-tag.path)"
           description = "Image tag to deploy"
           name        = "container_image"
           type        = "string"
@@ -384,9 +392,27 @@ resource "kubernetes_manifest" "task_container_deploy" {
         {
           env = [
             {
+              name = "AWS_ACCESS_KEY_ID"
+              valueFrom = {
+                secretKeyRef = {
+                  name = kubernetes_secret.digitalocean_spaces.metadata[0].name
+                  key  = "DIGITALOCEAN_SPACES_KEY"
+                }
+              }
+            },
+            {
+              name = "AWS_SECRET_ACCESS_KEY"
+              valueFrom = {
+                secretKeyRef = {
+                  name = kubernetes_secret.digitalocean_spaces.metadata[0].name
+                  key  = "DIGITALOCEAN_SPACES_SECRET"
+                }
+              }
+            },
+            {
               name  = "CONTAINER_IMAGE"
               value = "$(params.container_image)"
-            }
+            },
           ]
           # TODO: Create deploy container
           image     = "alpine/terragrunt"
@@ -407,7 +433,6 @@ resource "kubernetes_manifest" "task_container_deploy" {
           name = "age"
           secret = {
             secretName = kubernetes_secret.age.metadata[0].name
-            # namespace = kubernetes_secret.age.metadata.namespace
           }
         },
       ]
@@ -416,18 +441,25 @@ resource "kubernetes_manifest" "task_container_deploy" {
 }
 
 resource "kubernetes_secret" "age" {
-  metadata {
-    # annotations = {
-    #   "tekton.dev/git-${var.git_conf.domain}" = var.git_conf.domain
-    # }
-    name      = "age-keys-file"
-    namespace = kubernetes_namespace.tekton_workers.metadata[0].name
-  }
-
   data = {
     "keys.txt" = base64decode(var.tekton_conf.age_keys_file_base64)
   }
+  metadata {
+    name      = "age-keys-file"
+    namespace = kubernetes_namespace.tekton_workers.metadata[0].name
+  }
+  type = "Opaque"
+}
 
+resource "kubernetes_secret" "digitalocean_spaces" {
+  data = {
+    "DIGITALOCEAN_SPACES_KEY"    = var.tekton_conf.digitalocean_spaces_key,
+    "DIGITALOCEAN_SPACES_SECRET" = var.tekton_conf.digitalocean_spaces_secret,
+  }
+  metadata {
+    name      = "digitalocean-spaces-credentials"
+    namespace = kubernetes_namespace.tekton_workers.metadata[0].name
+  }
   type = "Opaque"
 }
 
@@ -481,56 +513,56 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
         },
       ]
       "tasks" = [
-        # {
-        #   name = "tests"
-        #   params = [
-        #     {
-        #       name  = "container_image"
-        #       value = "$(params.npm_container_image)"
-        #     },
-        #     {
-        #       name  = "context_path"
-        #       value = "$(params.context_path_npm)"
-        #     },
-        #   ]
-        #   resources = {
-        #     inputs = [
-        #       {
-        #         name     = "git-repo"
-        #         resource = "git-repo-npm"
-        #       },
-        #     ]
-        #   }
-        #   taskRef = {
-        #     kind = "Task"
-        #     name = kubernetes_manifest.task_npm_tests.object.metadata.name
-        #   }
-        # },
-        # {
-        #   name = "test-e2e"
-        #   params = [
-        #     {
-        #       name  = "container_image"
-        #       value = "$(params.cypress_container_image)"
-        #     },
-        #     {
-        #       name  = "context_path"
-        #       value = "$(params.context_path_npm)"
-        #     },
-        #   ]
-        #   resources = {
-        #     inputs = [
-        #       {
-        #         name     = "git-repo"
-        #         resource = "git-repo-npm"
-        #       },
-        #     ]
-        #   }
-        #   taskRef = {
-        #     kind = "Task"
-        #     name = kubernetes_manifest.task_npm_test_e2e.object.metadata.name
-        #   }
-        # },
+        {
+          name = "tests"
+          params = [
+            {
+              name  = "container_image"
+              value = "$(params.npm_container_image)"
+            },
+            {
+              name  = "context_path"
+              value = "$(params.context_path_npm)"
+            },
+          ]
+          resources = {
+            inputs = [
+              {
+                name     = "git-repo"
+                resource = "git-repo-npm"
+              },
+            ]
+          }
+          taskRef = {
+            kind = "Task"
+            name = kubernetes_manifest.task_npm_tests.object.metadata.name
+          }
+        },
+        {
+          name = "test-e2e"
+          params = [
+            {
+              name  = "container_image"
+              value = "$(params.cypress_container_image)"
+            },
+            {
+              name  = "context_path"
+              value = "$(params.context_path_npm)"
+            },
+          ]
+          resources = {
+            inputs = [
+              {
+                name     = "git-repo"
+                resource = "git-repo-npm"
+              },
+            ]
+          }
+          taskRef = {
+            kind = "Task"
+            name = kubernetes_manifest.task_npm_test_e2e.object.metadata.name
+          }
+        },
         {
           name = "version-tag"
           params = [
@@ -552,45 +584,44 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
             name = kubernetes_manifest.task_npm_version_tag.object.metadata.name
           }
         },
-        # {
-        #   name = "build"
-        #   params = [
-        #     {
-        #       name  = "version_tag"
-        #       value = "$(tasks.version-tag.results.version-tag)"
-        #     },
-        #   ]
-        #   resources = {
-        #     inputs = [
-        #       {
-        #         name     = "git-repo"
-        #         resource = "git-repo-npm"
-        #       },
-        #     ]
-        #     "outputs" = [
-        #       {
-        #         name     = "docker-image"
-        #         resource = "docker-image"
-        #       },
-        #     ]
-        #   }
-        #   "runAfter" = [
-        #     "tests",
-        #     "test-e2e",
-        #     "version-tag",
-        #   ]
-        #   taskRef = {
-        #     kind = "Task"
-        #     name = kubernetes_manifest.task_docker_build.object.metadata.name
-        #   }
-        # },
+        {
+          name = "build"
+          params = [
+            {
+              name  = "version_tag"
+              value = "$(tasks.version-tag.results.version-tag)"
+            },
+          ]
+          resources = {
+            inputs = [
+              {
+                name     = "git-repo"
+                resource = "git-repo-npm"
+              },
+            ]
+            "outputs" = [
+              {
+                name     = "docker-image"
+                resource = "docker-image"
+              },
+            ]
+          }
+          "runAfter" = [
+            "tests",
+            "test-e2e",
+            "version-tag",
+          ]
+          taskRef = {
+            kind = "Task"
+            name = kubernetes_manifest.task_docker_build.object.metadata.name
+          }
+        },
         {
           name = "deploy"
           params = [
             {
-              # TODO: get this from build digest
               name  = "container_image"
-              value = "$(tasks.version-tag.results.version-tag)"
+              value = "$(tasks.build.results.image-digest)"
             },
             {
               name  = "context_path"
@@ -606,12 +637,60 @@ resource "kubernetes_manifest" "pipeline_javascript_cicd" {
             ]
           }
           "runAfter" = [
-            # "build",
-            "version-tag",
+            "build",
           ]
           taskRef = {
             kind = "Task"
             name = kubernetes_manifest.task_container_deploy.object.metadata.name
+          }
+        },
+      ]
+    }
+  }
+}
+
+resource "kubernetes_manifest" "trigger_template_javascript_cicd_pipeline" {
+  manifest = {
+    apiVersion = "triggers.tekton.dev/v1alpha1"
+    kind       = "TriggerTemplate"
+    metadata = {
+      name      = "cicd-javascript-pipeline"
+      namespace = kubernetes_namespace.tekton_workers.metadata[0].name
+    }
+    spec = {
+      resourcetemplates = [
+        {
+          apiVersion = "tekton.dev/v1beta1"
+          kind       = "PipelineRun"
+          metadata = {
+            generateName = "${kubernetes_manifest.pipeline_javascript_cicd.object.metadata.name}-run-$(uid)"
+            namespace    = kubernetes_namespace.tekton_workers.metadata[0].name
+          }
+          spec = {
+            pipelineRef = {
+              name = kubernetes_manifest.pipeline_javascript_cicd.object.metadata.name
+            }
+            resources = [
+              {
+                name = "docker-image"
+                resourceRef = {
+                  name = kubernetes_manifest.pipeline_resource_docker_todo.object.metadata.name
+                }
+              },
+              {
+                name = "git-repo-npm"
+                resourceRef = {
+                  name = kubernetes_manifest.pipeline_resource_git_repo_cddc39_todo.object.metadata.name
+                }
+              },
+              {
+                name = "git-repo-infrastructure"
+                resourceRef = {
+                  name = kubernetes_manifest.pipeline_resource_git_repo_dmikalova_infrastructure.object.metadata.name
+                }
+              },
+            ]
+            serviceAccountName = kubernetes_service_account.main.metadata[0].name
           }
         },
       ]
