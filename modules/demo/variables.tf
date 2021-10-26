@@ -17,6 +17,14 @@ variable "git_conf" {
   })
 }
 
+variable "gitlab_project_info" {
+  type = object({
+    path = string
+    url = string
+  })
+}
+
+
 variable "tekton_conf" {
   sensitive = true
   type = object({

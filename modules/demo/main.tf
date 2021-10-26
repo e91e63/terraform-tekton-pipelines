@@ -731,7 +731,8 @@ resource "kubernetes_manifest" "trigger_binding_javascript_cicd_pipeline" {
     apiVersion = "triggers.tekton.dev/v1alpha1"
     kind       = "TriggerBinding"
     metadata = {
-      name = "javascript-cicd-pipeline"
+      name      = "javascript-cicd-pipeline"
+      namespace = kubernetes_namespace.tekton_workers.metadata[0].name
     }
     spec = {
       params = [
@@ -743,38 +744,54 @@ resource "kubernetes_manifest" "trigger_binding_javascript_cicd_pipeline" {
     }
   }
 }
+
 resource "kubernetes_manifest" "event_listener_gitlab_javascript_cicd_pipeline" {
   manifest = {
     apiVersion = "triggers.tekton.dev/v1alpha1"
     kind       = "EventListener"
     metadata = {
-      name = "javascript-cicd-pipeline"
+      finalizers = [
+        "eventlisteners.triggers.tekton.dev",
+      ]
+      name      = "javascript-cicd-pipeline"
+      namespace = kubernetes_namespace.tekton_workers.metadata[0].name
     }
     spec = {
+      namespaceSelector  = {}
+      resources          = {}
       serviceAccountName = kubernetes_service_account.main.metadata[0].name
       triggers = [
         {
           bindings = [
             {
-              ref = kubernetes_manifest.trigger_binding_javascript_cicd_pipeline.object.metadata[0].name
+              kind = "TriggerBinding"
+              ref  = kubernetes_manifest.trigger_binding_javascript_cicd_pipeline.object.metadata.name
             },
           ]
           interceptors = [
             {
-              gitlab = {
-                eventTypes = [
-                  "push",
-                ]
-                secretRef = {
-                  secretKey  = "secret-token"
-                  secretName = kubernetes_manifest.gitlab_webhook_secret_token.object.metadata[0].name
+              params = [
+                {
+                  name = "secretRef"
+                  value = {
+                    secretKey  = "secret-token"
+                    secretName = kubernetes_secret.gitlab_webhook_secret_token.metadata[0].name
+                  }
+                },
+                {
+                  name  = "eventTypes"
+                  value = ["Push Hook"]
                 }
+              ]
+              ref = {
+                kind = "ClusterInterceptor"
+                name = "gitlab"
               }
             },
           ]
           name = "gitlab-listener"
           template = {
-            ref = kubernetes_manifest.trigger_template_javascript_cicd_pipeline.object.metadata[0].name
+            ref = kubernetes_manifest.trigger_template_javascript_cicd_pipeline.object.metadata.name
           }
         },
       ]
@@ -804,12 +821,32 @@ module "ingress_route" {
   domain_info = var.domain_info
   route_conf = {
     middlewares  = []
-    path         = kubernetes_manifest.event_listener_gitlab_javascript_cicd_pipeline.object.metdata[0].name
-    service_name = "webhooks.tekton"
+    path         = local.route_path
+    service_name = "el-${kubernetes_manifest.event_listener_gitlab_javascript_cicd_pipeline.object.metadata.name}"
     service_port = 8080
   }
   service_conf = {
-    name      = "el-${kubernetes_manifest.event_listener_gitlab_javascript_cicd_pipeline.object.metdata[0].name}"
+    name      = local.route_service_name
     namespace = kubernetes_namespace.tekton_workers.metadata[0].name
   }
+}
+
+locals {
+  route_service_name = "webhooks.tekton"
+  route_path         = kubernetes_manifest.event_listener_gitlab_javascript_cicd_pipeline.object.metadata.name
+  webhook_url        = "https://${local.route_service_name}.${var.domain_info.name}/${local.route_path}"
+}
+
+output "url" {
+  value = local.webhook_url
+}
+
+resource "gitlab_project_hook" "main" {
+  enable_ssl_verification   = true
+  project                   = var.gitlab_project_info.path
+  push_events               = true
+  push_events_branch_filter = "main"
+  url                       = local.webhook_url
+  token                     = kubernetes_secret.gitlab_webhook_secret_token.data["secret-token"]
+  merge_requests_events     = true
 }
