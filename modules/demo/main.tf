@@ -5,6 +5,10 @@
 # terraform
 
 resource "kubernetes_secret" "gitlab" {
+  data = {
+    known_hosts      = file("known-hosts-${var.git_conf.domain}.txt")
+    "ssh-privatekey" = var.git_conf.private_key_pem
+  }
   metadata {
     annotations = {
       "tekton.dev/git-${var.git_conf.domain}" = var.git_conf.domain
@@ -12,12 +16,6 @@ resource "kubernetes_secret" "gitlab" {
     name      = "${var.git_conf.domain}-deploy-key"
     namespace = kubernetes_namespace.tekton_workers.metadata[0].name
   }
-
-  data = {
-    known_hosts      = file("known-hosts-${var.git_conf.domain}.txt")
-    "ssh-privatekey" = var.git_conf.private_key_pem
-  }
-
   type = "kubernetes.io/ssh-auth"
 }
 
@@ -44,7 +42,7 @@ resource "kubernetes_secret" "docker" {
   type = "kubernetes.io/dockerconfigjson"
 }
 
-resource "kubernetes_service_account" "main" {
+resource "kubernetes_service_account" "tekton_worker" {
   metadata {
     name      = "tekton-worker"
     namespace = kubernetes_namespace.tekton_workers.metadata[0].name
@@ -680,26 +678,24 @@ resource "kubernetes_manifest" "trigger_template_javascript_cicd_pipeline" {
               {
                 name = "docker-image"
                 resourceSpec = {
-                  name = "todo-image"
                   params = [
                     {
                       name  = "url"
                       value = "registry.digitalocean.com/dmikalova/todo"
                     },
                   ]
+                  type = "image"
                 }
               },
               {
                 name = "git-repo-infrastructure"
                 resourceRef = {
                   name = kubernetes_manifest.pipeline_resource_git_repo_dmikalova_infrastructure.object.metadata.name
-                  type = "git"
                 }
               },
               {
                 name = "git-repo-npm"
                 resourceSpec = {
-                  name = kubernetes_manifest.pipeline_resource_git_repo_cddc39_todo.object.metadata.name
                   params = [
                     {
                       name  = "refspec"
@@ -718,7 +714,7 @@ resource "kubernetes_manifest" "trigger_template_javascript_cicd_pipeline" {
                 }
               },
             ]
-            serviceAccountName = kubernetes_service_account.main.metadata[0].name
+            serviceAccountName = kubernetes_service_account.tekton_worker.metadata[0].name
           }
         },
       ]
@@ -759,7 +755,7 @@ resource "kubernetes_manifest" "event_listener_gitlab_javascript_cicd_pipeline" 
     spec = {
       namespaceSelector  = {}
       resources          = {}
-      serviceAccountName = kubernetes_service_account.main.metadata[0].name
+      serviceAccountName = kubernetes_service_account.tekton_triggers.metadata[0].name
       triggers = [
         {
           bindings = [
@@ -784,7 +780,7 @@ resource "kubernetes_manifest" "event_listener_gitlab_javascript_cicd_pipeline" 
                 }
               ]
               ref = {
-                kind = "ClusterInterceptor"
+                kind = "Interceptor"
                 name = "gitlab"
               }
             },
@@ -832,13 +828,9 @@ module "ingress_route" {
 }
 
 locals {
-  route_service_name = "webhooks.tekton"
+  route_service_name = "webhooks"
   route_path         = kubernetes_manifest.event_listener_gitlab_javascript_cicd_pipeline.object.metadata.name
   webhook_url        = "https://${local.route_service_name}.${var.domain_info.name}/${local.route_path}"
-}
-
-output "url" {
-  value = local.webhook_url
 }
 
 resource "gitlab_project_hook" "main" {
@@ -846,7 +838,137 @@ resource "gitlab_project_hook" "main" {
   project                   = var.gitlab_project_info.path
   push_events               = true
   push_events_branch_filter = "main"
-  url                       = local.webhook_url
   token                     = kubernetes_secret.gitlab_webhook_secret_token.data["secret-token"]
-  merge_requests_events     = true
+  url                       = local.webhook_url
+}
+
+resource "kubernetes_service_account" "tekton_triggers" {
+  metadata {
+    name      = "tekton-triggers"
+    namespace = kubernetes_namespace.tekton_workers.metadata[0].name
+  }
+}
+
+resource "kubernetes_role" "tekton_triggers" {
+  metadata {
+    name      = "tekton-triggers"
+    namespace = kubernetes_namespace.tekton_workers.metadata[0].name
+  }
+  rule {
+    api_groups = [
+      "triggers.tekton.dev",
+    ]
+    resources = [
+      "eventlisteners",
+      "triggerbindings",
+      "triggertemplates",
+      "triggers",
+    ]
+    verbs = [
+      "get",
+      "list",
+      "watch",
+    ]
+  }
+  rule {
+    api_groups = [""]
+    resources = [
+      "configmaps",
+    ]
+    verbs = [
+      "get",
+      "list",
+      "watch",
+    ]
+  }
+  rule {
+    api_groups = [
+      "tekton.dev",
+      "tekton.dev/v1beta1",
+    ]
+    resources = [
+      "pipelineruns",
+      "pipelineresources",
+      "taskruns",
+    ]
+    verbs = [
+      "create",
+    ]
+  }
+  rule {
+    api_groups = [""]
+    resources = [
+      "serviceaccounts",
+    ]
+    verbs = [
+      "impersonate",
+    ]
+  }
+  rule {
+    api_groups = [
+      "policy",
+    ]
+    resource_names = [
+      "tekton-triggers",
+    ]
+    resources = [
+      "podsecuritypolicies",
+    ]
+    verbs = [
+      "use",
+    ]
+  }
+}
+
+resource "kubernetes_role_binding" "tekton_triggers" {
+  metadata {
+    name      = "tekton-triggers"
+    namespace = kubernetes_namespace.tekton_workers.metadata[0].name
+  }
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "Role"
+    name      = kubernetes_role.tekton_triggers.metadata[0].name
+  }
+  subject {
+    kind      = "ServiceAccount"
+    name      = kubernetes_service_account.tekton_triggers.metadata[0].name
+    namespace = kubernetes_namespace.tekton_workers.metadata[0].name
+  }
+}
+
+resource "kubernetes_cluster_role" "tekton_triggers" {
+  metadata {
+    name = "tekton-triggers"
+  }
+  rule {
+    api_groups = [
+      "triggers.tekton.dev",
+    ]
+    resources = [
+      "clustertriggerbindings",
+      "clusterinterceptors",
+    ]
+    verbs = [
+      "get",
+      "list",
+      "watch",
+    ]
+  }
+}
+
+resource "kubernetes_cluster_role_binding" "tekton_triggers" {
+  metadata {
+    name = "tekton-triggers"
+  }
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "ClusterRole"
+    name      = kubernetes_role.tekton_triggers.metadata[0].name
+  }
+  subject {
+    kind      = "ServiceAccount"
+    name      = kubernetes_service_account.tekton_triggers.metadata[0].name
+    namespace = kubernetes_namespace.tekton_workers.metadata[0].name
+  }
 }
