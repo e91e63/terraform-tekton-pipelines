@@ -20,12 +20,12 @@ resource "kubernetes_secret" "gitlab" {
 }
 
 resource "digitalocean_container_registry_docker_credentials" "main" {
-  registry_name = var.container_registry_info.name
+  registry_name = var.container_registry_info.registry_name
   write         = true
 }
 
 data "digitalocean_container_registry" "main" {
-  name = var.container_registry_info.name
+  name = var.container_registry_info.registry_name
 }
 
 resource "kubernetes_secret" "docker" {
@@ -34,9 +34,9 @@ resource "kubernetes_secret" "docker" {
   }
   metadata {
     annotations = {
-      "tekton.dev/docker-registry.digitalocean.com" = "registrydigitalocean.com"
+      "tekton.dev/docker-registry.digitalocean.com" = "registry.digitalocean.com"
     }
-    name      = "docker-registry-${var.container_registry_info.name}-credentials"
+    name      = "docker-registry-${var.container_registry_info.registry_name}-credentials"
     namespace = kubernetes_namespace.tekton_workers.metadata[0].name
   }
   type = "kubernetes.io/dockerconfigjson"
@@ -251,7 +251,7 @@ resource "kubernetes_manifest" "task_npm_tests" {
           image     = "$(params.container_image)"
           name      = "npm-tests"
           resources = {}
-          script    = file("./npm-tests.sh")
+          script    = file("${path.module}/npm-tests-unit.sh")
           workingDir : "$(params.context_path)"
         },
       ]
@@ -296,7 +296,7 @@ resource "kubernetes_manifest" "task_npm_test_e2e" {
           image     = "$(params.container_image)"
           name      = "npm-test-e2e"
           resources = {}
-          script    = file("./npm-test-e2e.sh")
+          script    = file("${path.module}/npm-tests-e2e.sh")
           workingDir : "$(params.context_path)"
         },
       ]
@@ -347,7 +347,7 @@ resource "kubernetes_manifest" "task_npm_version_tag" {
           image     = "alpine"
           name      = "npm-version-tag"
           resources = {}
-          script    = file("./npm-version-tag.sh")
+          script    = file("${path.module}/version-tag.sh")
           workingDir : "$(params.context_path)"
         },
       ]
@@ -416,7 +416,7 @@ resource "kubernetes_manifest" "task_container_deploy" {
           image     = "alpine/terragrunt"
           name      = "container-deploy"
           resources = {}
-          script    = file("./container-deploy.sh")
+          script    = file("${path.module}/container-deploy.sh")
           volumeMounts = [
             {
               name      = "age"
@@ -939,7 +939,7 @@ resource "kubernetes_role_binding" "tekton_triggers" {
 
 resource "kubernetes_cluster_role" "tekton_triggers" {
   metadata {
-    name = "tekton-triggers"
+    name = "tekton-triggers-demo"
   }
   rule {
     api_groups = [
@@ -959,7 +959,7 @@ resource "kubernetes_cluster_role" "tekton_triggers" {
 
 resource "kubernetes_cluster_role_binding" "tekton_triggers" {
   metadata {
-    name = "tekton-triggers"
+    name = "tekton-triggers-demo"
   }
   role_ref {
     api_group = "rbac.authorization.k8s.io"

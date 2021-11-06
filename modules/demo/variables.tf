@@ -1,6 +1,6 @@
 variable "container_registry_info" {
   type = object({
-    name = string
+    registry_name = string
   })
 }
 
@@ -20,7 +20,7 @@ variable "git_conf" {
 variable "gitlab_project_info" {
   type = object({
     path = string
-    url = string
+    url  = string
   })
 }
 
