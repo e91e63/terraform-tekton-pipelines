@@ -5,8 +5,6 @@ locals {
 module "main" {
   source = "../"
 
-  name      = "deploy"
-  namespace = var.task_conf.namespace
   params = [
     {
       description = "Image to deploy"

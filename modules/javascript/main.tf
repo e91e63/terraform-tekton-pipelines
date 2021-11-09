@@ -9,8 +9,21 @@ module "main" {
 
   conf = merge(local.conf, {
     tasks = {
+      build = {
+        images = {
+          kaniko = local.conf.images.kaniko
+        }
+      }
+      deploy = {
+        images = {
+          terragrunt = local.conf.images.terragrunt
+        }
+        secret_names = local.conf.secret_names
+      }
       test = {
-        image_default = local.conf.images.alpine
+        images = {
+          default = local.conf.images.alpine
+        }
         steps = {
           dependencies = {
             script = file("${path.module}/scripts/npm-dependencies.sh")

@@ -29,8 +29,9 @@ module "javascript" {
   source = "../javascript"
 
   conf = {
-    images    = var.conf.images
-    namespace = var.conf.namespace
+    images       = var.conf.images
+    namespace    = var.conf.namespace
+    secret_names = module.baseline.secret_names
   }
 }
 

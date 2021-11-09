@@ -8,6 +8,7 @@ variable "conf" {
       terragrunt = string
     })
     namespace     = string
+    secret_names  = any
     workflow_name = optional(string)
   })
 }
