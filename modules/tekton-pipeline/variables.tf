@@ -1,9 +1,10 @@
 variable "conf" {
   type = object({
-    name      = string
-    namespace = string
+    description = string
+    name        = string
+    namespace   = string
     params = list(object({
-      default     = string
+      default     = optional(string)
       description = string
       name        = string
       type        = string
@@ -23,16 +24,16 @@ variable "conf" {
           name     = string
           resource = string
         }))
-        outputs = list(object({
+        outputs = optional(list(object({
           name     = string
           resource = string
-        }))
+        })))
       })
       runAfter = optional(list(string))
-      taskRef = {
-        kind  = optional(string)
-        value = string
-      }
+      taskRef = object({
+        kind = optional(string)
+        name = string
+      })
     }))
   })
 }

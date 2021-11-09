@@ -80,13 +80,132 @@ locals {
     }
   })
   labels = {
-    age_keys_file = "age-keys-file"
-    context_path  = "context-path"
-    docker_image  = "docker-image"
-    git_repo      = "git-repo"
-    image_digest  = "image-digest"
-    version_tag   = "version-tag"
+    age_keys_file      = "age-keys-file"
+    context_path       = "context-path"
+    context_path_code  = "context-path-code"
+    context_path_infra = "context-path-infra"
+    docker_image       = "docker-image"
+    git_repo           = "git-repo"
+    git_repo_code      = "git-repo-code"
+    git_repo_infra     = "git-repo-infra"
+    image_digest       = "image-digest"
+    version_tag        = "version-tag"
   }
+}
+
+module "pipeline" {
+  source = "../tekton-pipeline"
+
+  conf = {
+    description = "${local.conf.workflow_name} test, build, and deploy pipeline"
+    name        = "${local.conf.workflow_name}-test-build-deploy"
+    namespace   = local.conf.namespace
+    params = [
+      {
+        default     = "$(resources.inputs.${local.labels.git_repo}.path)"
+        description = "code context path"
+        name        = local.labels.context_path_code
+        type        = "string"
+      },
+      {
+        description = "terragrunt context path"
+        name        = local.labels.context_path_infra
+        type        = "string"
+      },
+    ]
+    resources = [
+      {
+        name = local.labels.docker_image
+        type = "image"
+      },
+      {
+        name = local.labels.git_repo_code
+        type = "git"
+      },
+      {
+        name = local.labels.git_repo_infra
+        type = "git"
+      },
+    ]
+    tasks = [
+      {
+        name = module.task_tests.info.name
+        params = [
+          {
+            name  = local.labels.context_path
+            value = "$(params.${local.labels.context_path_code})"
+          },
+        ]
+        resources = {
+          inputs = [
+            {
+              name     = local.labels.git_repo
+              resource = local.labels.git_repo_code
+            },
+          ]
+        }
+        taskRef = {
+          name = module.task_tests.info.name
+        }
+      },
+      {
+        name = module.task_build.info.name
+        params = [
+          {
+            name  = local.labels.version_tag
+            value = "$(tasks.${module.task_tests.info.name}.results.${local.labels.version_tag})"
+          },
+        ]
+        resources = {
+          inputs = [
+            {
+              name     = local.labels.git_repo
+              resource = local.labels.git_repo_code
+            },
+          ]
+          "outputs" = [
+            {
+              name     = local.labels.docker_image
+              resource = local.labels.docker_image
+            },
+          ]
+        }
+        "runAfter" = [
+          module.task_tests.info.name,
+        ]
+        taskRef = {
+          name = module.task_build.info.name
+        }
+      },
+      {
+        name = module.task_deploy.info.name
+        params = [
+          {
+            name  = local.labels.context_path
+            value = "$(params.${local.labels.context_path_infra})"
+          },
+        ]
+        resources = {
+          inputs = [
+            {
+              name     = local.labels.git_repo
+              resource = local.labels.git_repo_infra
+            },
+          ]
+        }
+        "runAfter" = [
+          module.task_build.info.name,
+        ]
+        taskRef = {
+          name = module.task_build.info.name
+        }
+      },
+    ]
+  }
+}
+
+output "test" {
+  value = module.pipeline.test
 }
 
 module "task_build" {
@@ -99,7 +218,7 @@ module "task_build" {
     params = [
       {
         default     = "$(resources.inputs.${local.labels.git_repo}.path)"
-        description = "kaniko build context"
+        description = "kaniko build context path"
         name        = local.labels.context_path
         type        = "string"
       },
@@ -231,12 +350,12 @@ module "task_deploy" {
   }
 }
 
-module "task_test" {
+module "task_tests" {
   source = "../tekton-task"
 
   conf = {
     description = "run ${local.conf.workflow_name} tests on repo"
-    name        = "${local.conf.workflow_name}-test"
+    name        = "${local.conf.workflow_name}-tests"
     namespace   = local.conf.namespace
     params = [
       {

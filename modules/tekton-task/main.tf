@@ -6,7 +6,9 @@ locals {
     # TODO: write a provider that removes all null values
     defaults(var.conf, {}),
     # remove optional keys from params
-    { params = [for param in var.conf.params : { for k, v in param : k => v if v != null }] },
+    { params = [for param in var.conf.params : {
+      for k, v in param : k => v if v != null
+    }] },
     # remove optional keys from resources
     { resources = { for k, v in var.conf.resources : k => v if v != null } },
     # remove optional keys from steps
@@ -26,7 +28,7 @@ locals {
   )))
 }
 
-resource "kubernetes_manifest" "task" {
+resource "kubernetes_manifest" "main" {
   manifest = {
     apiVersion = "tekton.dev/v1alpha1"
     kind       = "Task"
