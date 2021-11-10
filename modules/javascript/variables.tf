@@ -13,9 +13,14 @@ variable "conf" {
     triggers = object({
       service_account_name = string
     })
+    webhooks_subdomain = string
     workers = object({
       service_account_name = string
     })
     workflow_name = optional(string)
   })
+}
+
+variable "domain_info" {
+  type = any
 }

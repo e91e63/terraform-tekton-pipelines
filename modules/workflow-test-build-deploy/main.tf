@@ -41,6 +41,24 @@ locals {
     pipeline_name      = "${local.conf.workflow_name}-test-build-deploy"
     version_tag        = "version-tag"
   }
+  route_path  = module.event_listener.info.name
+  webhook_url = "https://${local.conf.webhooks_subdomain}.${var.domain_info.name}/${local.route_path}"
+}
+
+module "ingress_route" {
+  source = "git@gitlab.com:e91e63/terraform-kubernetes-manifests.git//modules/traefik-ingress-route"
+
+  domain_info = var.domain_info
+  route_conf = {
+    middlewares  = []
+    path         = local.route_path
+    service_name = "el-${local.conf.webhooks_subdomain}"
+    service_port = 8080
+  }
+  service_conf = {
+    name      = local.conf.webhooks_subdomain
+    namespace = local.conf.namespace
+  }
 }
 
 module "pipeline" {

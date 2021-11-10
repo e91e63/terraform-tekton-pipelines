@@ -75,8 +75,7 @@ module "main" {
           }
         }
       }
-      triggers = local.conf.triggers
-      workers  = local.conf.workers
     }
   })
+  domain_info = var.domain_info
 }
