@@ -23,7 +23,7 @@ locals {
   )))
 }
 
-resource "kubernetes_manifest" "pipeline" {
+resource "kubernetes_manifest" "main" {
   manifest = {
     apiVersion = "tekton.dev/v1beta1"
     kind       = "Pipeline"

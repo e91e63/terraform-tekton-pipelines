@@ -1,13 +1,17 @@
-resource "kubernetes_manifest" "trigger_binding_javascript_cicd_pipeline" {
+locals {
+  conf = jsondecode(jsonencode(defaults(var.conf, {})))
+}
+
+resource "kubernetes_manifest" "main" {
   manifest = {
     apiVersion = "triggers.tekton.dev/v1alpha1"
     kind       = "TriggerBinding"
     metadata = {
-      name      = var.trigger_binding_conf.name
-      namespace = var.trigger_binding_conf.namespace
+      name      = local.conf.name
+      namespace = local.conf.namespace
     }
     spec = {
-      params = var.trigger_binding_conf.params
+      params = local.conf.params
     }
   }
 }

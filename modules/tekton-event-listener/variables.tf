@@ -1,18 +1,24 @@
-variable "event_listener_conf" {
+variable "conf" {
   type = object({
-    name                 = string
-    namespace            = string
-    service_account_name = string
+    name               = string
+    namespace          = string
+    serviceAccountName = string
     triggers = list(object({
       bindings = list(object({
-        kind = string
+        kind = optional(string)
         ref  = string
       }))
       interceptors = list(object({
-        params = list(object({
-          name  = string
-          value = any
-        }))
+        # due to terraform type limitations and multiple types for params.value, params must be any type
+        params = any
+        # params = list(object({
+        #   name = string
+        #   value = optional(object({
+        #     secretKey  = string
+        #     secretName = string
+        #   }))
+        #   value = string
+        # }))
         ref = object({
           kind = string
           name = string

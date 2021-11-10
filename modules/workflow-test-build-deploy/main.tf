@@ -38,7 +38,7 @@ locals {
     git_repo_infra     = "git-repo-infra"
     git_repo_infra_url = "git-repo-infra-url"
     image_digest       = "image-digest"
-    pipeline_label     = "${local.conf.workflow_name}-test-build-deploy"
+    pipeline_name      = "${local.conf.workflow_name}-test-build-deploy"
     version_tag        = "version-tag"
   }
 }
@@ -48,7 +48,7 @@ module "pipeline" {
 
   conf = {
     description = "${local.conf.workflow_name} test, build, and deploy pipeline"
-    name        = local.labels.pipeline_label
+    name        = local.labels.pipeline_name
     namespace   = local.conf.namespace
     params = [
       {
@@ -376,7 +376,7 @@ module "trigger_template" {
   source = "../tekton-trigger-template"
 
   conf = {
-    name      = local.labels.pipeline_label
+    name      = local.labels.pipeline_name
     namespace = local.conf.namespace
     params = [
       {
@@ -461,5 +461,68 @@ module "trigger_template" {
 }
 
 output "test" {
-  value = module.trigger_template.test
+  value = ""
+}
+
+module "trigger_binding" {
+  source = "../tekton-trigger-binding"
+
+  conf = {
+    name      = local.labels.pipeline_name
+    namespace = local.conf.namespace
+    params = [
+      {
+        name  = local.labels.git_repo_code_url
+        value = "$(body.repository.git_ssh_url)"
+      },
+      {
+        name  = local.labels.git_repo_infra_url
+        value = "$(body.repository.git_ssh_url)x"
+      },
+    ]
+  }
+}
+
+module "event_listener" {
+  source = "../tekton-event-listener"
+
+  conf = {
+    name               = local.labels.pipeline_name
+    namespace          = local.conf.namespace
+    serviceAccountName = local.conf.triggers.service_account_name
+    triggers = [
+      {
+        bindings = [
+          {
+            ref = module.trigger_binding.info.name
+          },
+        ]
+        interceptors = [
+          {
+            params = [
+              {
+                name = "secretRef"
+                value = {
+                  secretKey  = local.conf.interceptors.git.secret_names.webhook_token_key
+                  secretName = local.conf.interceptors.git.secret_names.webhook_token
+                }
+              },
+              {
+                name  = "eventTypes"
+                value = local.conf.interceptors.git.event_types
+              }
+            ]
+            ref = {
+              kind = "Interceptor"
+              name = local.conf.interceptors.git.name
+            }
+          },
+        ]
+        name = local.labels.pipeline_name
+        template = {
+          ref = module.trigger_template.info.name
+        }
+      },
+    ]
+  }
 }

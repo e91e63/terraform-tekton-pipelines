@@ -30,6 +30,7 @@ module "javascript" {
 
   conf = {
     images       = var.conf.images
+    interceptors = var.conf.interceptors
     namespace    = var.conf.namespace
     secret_names = module.baseline.info.secret_names
     triggers = {

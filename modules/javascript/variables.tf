@@ -7,6 +7,7 @@ variable "conf" {
       node       = string
       terragrunt = string
     })
+    interceptors = any
     namespace    = string
     secret_names = any
     triggers = object({

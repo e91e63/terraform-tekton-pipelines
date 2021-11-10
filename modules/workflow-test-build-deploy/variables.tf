@@ -1,5 +1,15 @@
 variable "conf" {
   type = object({
+    interceptors = object({
+      git = object({
+        name        = string
+        event_types = list(string)
+        secret_names = object({
+          webhook_token     = string
+          webhook_token_key = string
+        })
+      })
+    })
     namespace = string
     tasks = object({
       build = object({
