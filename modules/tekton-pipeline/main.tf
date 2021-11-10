@@ -23,15 +23,6 @@ locals {
   )))
 }
 
-output "test" {
-  value = {
-    description = local.conf.description
-    params      = local.conf.params
-    resources   = local.conf.resources
-    tasks       = local.conf.tasks
-  }
-}
-
 resource "kubernetes_manifest" "pipeline" {
   manifest = {
     apiVersion = "tekton.dev/v1beta1"

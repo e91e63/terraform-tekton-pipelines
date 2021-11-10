@@ -1,37 +1,33 @@
-variable "trigger_template_conf" {
+variable "conf" {
   type = object({
     name      = string
     namespace = string
-    params = list(object({
+    params = optional(list(object({
+      default     = optional(string)
       description = string
       name        = string
-    }))
-    resource_templates = list(object({
-      metadata = object({
-        generate_name = string
-        namespace     = string
-      })
+    })))
+    resourcetemplates = list(object({
+      apiVersion = optional(string)
+      kind       = string
       spec = object({
-        pipeline_ref = object({
+        pipelineRef = optional(object({
           name = string
-        })
-        resource_refs = object({
+        }))
+        resources = optional(list(object({
           name = string
-          resource_ref = object({
+          resourceRef = optional(object({
             name = string
-          })
-        })
-        resource_specs = object({
-          name = string
-          resource_spec = {
-            params = list(object({
+          }))
+          resourceSpec = optional(object({
+            params = optional(list(object({
               name  = string
               value = string
-            }))
+            })))
             type = string
-          }
-        })
-        service_account_name = string
+          }))
+        })))
+        serviceAccountName = string
       })
     }))
   })

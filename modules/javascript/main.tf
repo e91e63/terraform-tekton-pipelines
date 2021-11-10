@@ -46,6 +46,8 @@ module "main" {
           }
         }
       }
+      triggers = local.conf.triggers
+      workers  = local.conf.workers
     }
   })
 }

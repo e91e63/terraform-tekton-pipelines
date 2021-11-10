@@ -1,57 +1,3 @@
-variable "conf" {
-  type = object({
-    namespace = string
-    tasks = object({
-      build = object({
-        images = object({
-          kaniko = string
-        })
-      })
-      deploy = object({
-        images = object({
-          terragrunt = string
-        })
-        secret_names = object({
-          age_keys_file          = string
-          terraform_remote_state = string
-        })
-      })
-      test = object({
-        images = object({
-          default = string
-        })
-        steps = object({
-          dependencies = object({
-            image  = optional(string)
-            script = string
-          })
-          fmt = object({
-            image  = optional(string)
-            script = string
-          })
-          lint = object({
-            image  = optional(string)
-            script = string
-          })
-          unit = object({
-            image  = optional(string)
-            script = string
-          })
-          e2e = object({
-            image  = optional(string)
-            script = string
-          })
-          version_tag = object({
-            image  = optional(string)
-            script = string
-          })
-        })
-      })
-    })
-    workflow_name = string
-  })
-}
-
 locals {
   conf = defaults(var.conf, {
     tasks = {
@@ -85,10 +31,14 @@ locals {
     context_path_code  = "context-path-code"
     context_path_infra = "context-path-infra"
     docker_image       = "docker-image"
+    docker_image_url   = "docker-image-url"
     git_repo           = "git-repo"
     git_repo_code      = "git-repo-code"
+    git_repo_code_url  = "git-repo-code-url"
     git_repo_infra     = "git-repo-infra"
+    git_repo_infra_url = "git-repo-infra-url"
     image_digest       = "image-digest"
+    pipeline_label     = "${local.conf.workflow_name}-test-build-deploy"
     version_tag        = "version-tag"
   }
 }
@@ -98,7 +48,7 @@ module "pipeline" {
 
   conf = {
     description = "${local.conf.workflow_name} test, build, and deploy pipeline"
-    name        = "${local.conf.workflow_name}-test-build-deploy"
+    name        = local.labels.pipeline_label
     namespace   = local.conf.namespace
     params = [
       {
@@ -202,10 +152,6 @@ module "pipeline" {
       },
     ]
   }
-}
-
-output "test" {
-  value = module.pipeline.test
 }
 
 module "task_build" {
@@ -424,4 +370,96 @@ module "task_tests" {
       },
     ]
   }
+}
+
+module "trigger_template" {
+  source = "../tekton-trigger-template"
+
+  conf = {
+    name      = local.labels.pipeline_label
+    namespace = local.conf.namespace
+    params = [
+      {
+        description = "the ${local.conf.workflow_name} repo to build, test, and deploy"
+        name        = local.labels.git_repo_code_url
+      },
+      {
+        description = "the infrastructure configuration repo to update for deploys"
+        name        = local.labels.git_repo_infra_url
+      },
+      {
+        description = "the docker image url"
+        name        = local.labels.docker_image_url
+      },
+    ]
+    resourcetemplates = [
+      {
+        kind = "PipelineRun"
+        spec = {
+          pipelineRef = {
+            name = module.pipeline.info.name
+          }
+          resources = [
+            {
+              name = local.labels.docker_image_url
+              resourceSpec = {
+                params = [
+                  {
+                    name  = "url"
+                    value = "$(tt.params.${local.labels.docker_image_url})"
+                  },
+                ]
+                type = "image"
+              }
+            },
+            {
+              name = local.labels.git_repo_infra
+              resourceSpec = {
+                params = [
+                  {
+                    name  = "refspec"
+                    value = "refs/heads/main:refs/heads/main"
+                  },
+                  {
+                    name  = "revision"
+                    value = "main"
+                  },
+                  {
+                    name  = "url"
+                    value = "$(tt.params.${local.labels.git_repo_infra_url})"
+                  },
+                ]
+                type = "git"
+              }
+            },
+            {
+              name = local.labels.git_repo_code
+              resourceSpec = {
+                params = [
+                  {
+                    name  = "refspec"
+                    value = "refs/heads/main:refs/heads/main"
+                  },
+                  {
+                    name  = "revision"
+                    value = "main"
+                  },
+                  {
+                    name  = "url"
+                    value = "$(tt.params.${local.labels.git_repo_code_url})"
+                  },
+                ]
+                type = "git"
+              }
+            },
+          ]
+          serviceAccountName = local.conf.workers.service_account_name
+        }
+      },
+    ]
+  }
+}
+
+output "test" {
+  value = module.trigger_template.test
 }

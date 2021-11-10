@@ -31,7 +31,13 @@ module "javascript" {
   conf = {
     images       = var.conf.images
     namespace    = var.conf.namespace
-    secret_names = module.baseline.secret_names
+    secret_names = module.baseline.info.secret_names
+    triggers = {
+      service_account_name = module.baseline.info.service_account_names.triggers
+    }
+    workers = {
+      service_account_name = module.baseline.info.service_account_names.workers
+    }
   }
 }
 
