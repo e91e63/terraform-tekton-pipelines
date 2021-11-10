@@ -662,7 +662,7 @@ resource "kubernetes_manifest" "trigger_template_javascript_cicd_pipeline" {
           name        = "git-repo-npm-url"
         },
       ]
-      resource_templates = [
+      resourcetemplates = [
         {
           apiVersion = "tekton.dev/v1beta1"
           kind       = "PipelineRun"
