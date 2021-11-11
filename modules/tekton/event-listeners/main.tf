@@ -4,7 +4,7 @@ locals {
   # for loops remove null values
   conf = jsondecode(jsonencode(merge(
     defaults(var.conf, {}),
-    # add default values
+    # remove null values
     { triggers = [for trigger in var.conf.triggers : merge(
       { for k, v in trigger : k => v if v != null },
       { bindings = [for binding in trigger.bindings : merge(

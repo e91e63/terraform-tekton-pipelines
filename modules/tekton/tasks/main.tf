@@ -5,23 +5,17 @@ locals {
   # for loops remove null values
   conf = jsondecode(jsonencode(merge(
     defaults(var.conf, {}),
-    # remove optional keys from params
+    # remove null values
     { params = [for param in var.conf.params : {
       for k, v in param : k => v if v != null
     }] },
-    # remove optional keys from resources
     { resources = { for k, v in var.conf.resources : k => v if v != null } },
-    # remove optional keys from steps
     { steps = [for step in var.conf.steps : merge(
-      # add empty kubernetes resources
+      # set default resources
       { resources = {} },
-      # add non-null keys
       { for k, v in step : k => v if v != null },
-      # remove optional keys from env vars
       { for k, v in step : k => [
-        for env in step[k] : {
-          for ek, ev in env : ek => ev if ev != null
-        }
+        for env in step[k] : { for ek, ev in env : ek => ev if ev != null }
         ] if k == "env" && v != null
       },
     )] },

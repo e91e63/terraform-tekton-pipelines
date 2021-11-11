@@ -27,7 +27,7 @@ cd "${DIR}"
 GIT_DIFF=$(git status --porcelain)
 if [ -n "${GIT_DIFF}" ]; then
     echo "Committing changes"
-    # TODO: can this user be created by tf?
+    # TODO: sign these commits
     git config --global "user.name" "Infrastructure automation"
     git config --global "user.email" "automation@e91e63.tech"
 
