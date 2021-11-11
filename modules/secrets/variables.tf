@@ -1,6 +1,6 @@
 variable "conf" {
   type = object({
-    credentials = object({
+    secrets = object({
       age = object({
         keys_file_base64 = string
       })
@@ -10,8 +10,8 @@ variable "conf" {
         server_url        = string
       })
       git = object({
-        domain              = string
-        known_hosts         = string
+        domain          = string
+        known_hosts     = string
         private_key_pem = string
       })
       terraform_remote_state = object({
@@ -19,8 +19,6 @@ variable "conf" {
         secret_access_key = string
       })
     })
-    namespace                     = string
-    triggers_service_account_name = optional(string)
-    workers_service_account_name  = optional(string)
+    namespace = string
   })
 }

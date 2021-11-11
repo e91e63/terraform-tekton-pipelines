@@ -12,9 +12,9 @@ resource "kubernetes_service_account" "main" {
     namespace   = local.conf.namespace
   }
   secret {
-    name = var.conf.docker_secret_name
+    name = var.conf.secret_names.docker_credentials
   }
   secret {
-    name = var.conf.git_secret_name
+    name = var.conf.secret_names.git_ssh_key
   }
 }

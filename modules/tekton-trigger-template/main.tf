@@ -16,23 +16,17 @@ locals {
       } },
       merge(
         { for k, v in template : k => v if v != null },
-        { spec = { resources = [
-          for resource in template.spec.resources : {
-            for k, v in resource : k => v if v != null
-          }
-        ] } }
+        { spec = merge(
+          { for k, v in template.spec : k => v if v != null },
+          { resources = [
+            for resource in template.spec.resources : {
+              for k, v in resource : k => v if v != null
+            }
+          ] },
+        ) }
       ),
     )] },
   )))
-}
-
-output "test" {
-  value = {
-    spec = {
-      params            = local.conf.params
-      resourcetemplates = local.conf.resourcetemplates
-    }
-  }
 }
 
 resource "kubernetes_manifest" "main" {

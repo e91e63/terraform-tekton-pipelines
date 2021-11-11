@@ -1,7 +1,11 @@
 locals {
-  conf = defaults(var.conf, {
-    workflow_name = "javascript"
-  })
+  conf = merge(
+    var.conf,
+    {
+      workflow_name = "javascript"
+    },
+    { for k, v in var.conf : k => v if v != null },
+  )
   labels = {
     webhook_token = "webhook-token"
   }
@@ -51,7 +55,7 @@ module "main" {
       }
       test = {
         images = {
-          default = local.conf.images.alpine
+          default = local.conf.images.node
         }
         steps = {
           dependencies = {
@@ -71,6 +75,7 @@ module "main" {
             script = file("${path.module}/scripts/npm-tests-e2e.sh")
           }
           version_tag = {
+            image  = local.conf.images.alpine
             script = file("${path.module}/scripts/version-tag.sh")
           }
         }

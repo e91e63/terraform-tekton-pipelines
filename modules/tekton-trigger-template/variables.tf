@@ -11,6 +11,10 @@ variable "conf" {
       apiVersion = optional(string)
       kind       = string
       spec = object({
+        params = optional(list(object({
+          name  = string
+          value = string
+        })))
         pipelineRef = optional(object({
           name = string
         }))

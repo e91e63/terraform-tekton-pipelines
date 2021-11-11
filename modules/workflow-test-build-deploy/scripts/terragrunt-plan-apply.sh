@@ -3,8 +3,8 @@ set -eu
 if [ "${DEBUG:=}" = true ]; then set -x; fi
 
 echo "Starting $(basename "${0}")"
-IMAGE="${IMAGE:?}"
-IMAGE=$(echo "${IMAGE}" | sed 's/@.*//')
+IMAGE_DIGEST="${IMAGE_DIGEST:?}"
+IMAGE=$(echo "${IMAGE_DIGEST}" | sed 's/@.*//')
 DIR="${PWD}"
 HCLEDIT_DIR="/tmp/hcledit"
 HCLEDIT_VERSION="0.2.0"

@@ -1,9 +1,9 @@
 locals {
+  # TODO: write a provider that removes all null values
   # json de-encoding resolves diffs in kubernetes provider from list(object()) types
   # https://github.com/hashicorp/terraform-provider-kubernetes/issues/1482
   # for loops remove null values
   conf = jsondecode(jsonencode(merge(
-    # TODO: write a provider that removes all null values
     defaults(var.conf, {}),
     # remove optional keys from params
     { params = [for param in var.conf.params : {
@@ -42,6 +42,7 @@ resource "kubernetes_manifest" "main" {
       resources   = local.conf.resources
       results     = local.conf.results
       steps       = local.conf.steps
+      volumes     = local.conf.volumes
     } : k => v if v != [] }
   }
 }

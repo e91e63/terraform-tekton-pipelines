@@ -1,8 +1,5 @@
-output "test" {
-  value = module.javascript.test
-}
-
 output "info" {
+  sensitive = true
   value = {
     javascript = module.javascript.info
   }

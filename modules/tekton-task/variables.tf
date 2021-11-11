@@ -48,8 +48,18 @@ variable "conf" {
           memory = string
         }))
       }))
-      script     = optional(string)
+      script = optional(string)
+      volumeMounts = optional(list(object({
+        name      = string
+        mountPath = string
+      })))
       workingDir = optional(string)
     }))
+    volumes = optional(list(object({
+      name = string
+      secret = object({
+        secretName = string
+      })
+    })))
   })
 }

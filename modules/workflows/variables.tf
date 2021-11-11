@@ -1,12 +1,11 @@
 variable "conf" {
   type = object({
-    credentials                   = any
-    images                        = any
-    interceptors                  = any
-    namespace                     = string
-    triggers_service_account_name = optional(string)
-    webhooks_subdomain            = optional(string)
-    workers_service_account_name  = optional(string)
+    images             = any
+    interceptors       = any
+    namespace          = string
+    secrets            = any
+    service_accounts   = optional(any)
+    webhooks_subdomain = optional(string)
   })
 }
 

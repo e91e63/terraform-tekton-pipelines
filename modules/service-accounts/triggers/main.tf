@@ -15,7 +15,7 @@ resource "kubernetes_cluster_role" "main" {
       "triggers.tekton.dev",
     ]
     non_resource_urls = []
-    resource_names = []
+    resource_names    = []
     resources = [
       "clustertriggerbindings",
       "clusterinterceptors",

@@ -1,30 +1,33 @@
 locals {
-  conf = defaults(var.conf, {
-    tasks = {
-      test = {
-        steps = {
-          dependencies = {
-            image = var.conf.tasks.test.images.default
-          }
-          fmt = {
-            image = var.conf.tasks.test.images.default
-          }
-          lint = {
-            image = var.conf.tasks.test.images.default
-          }
-          unit = {
-            image = var.conf.tasks.test.images.default
-          }
-          e2e = {
-            image = var.conf.tasks.test.images.default
-          }
-          version_tag = {
-            image = var.conf.tasks.test.images.default
+  conf = defaults(
+    var.conf,
+    {
+      tasks = {
+        test = {
+          steps = {
+            dependencies = {
+              image = var.conf.tasks.test.images.default
+            }
+            fmt = {
+              image = var.conf.tasks.test.images.default
+            }
+            lint = {
+              image = var.conf.tasks.test.images.default
+            }
+            unit = {
+              image = var.conf.tasks.test.images.default
+            }
+            e2e = {
+              image = var.conf.tasks.test.images.default
+            }
+            version_tag = {
+              image = var.conf.tasks.test.images.default
+            }
           }
         }
       }
-    }
-  })
+    },
+  )
   labels = {
     age_keys_file      = "age-keys-file"
     context_path       = "context-path"
@@ -45,19 +48,47 @@ locals {
   webhook_url = "https://${local.conf.webhooks_subdomain}.${var.domain_info.name}/${local.route_path}"
 }
 
-module "ingress_route" {
-  source = "git@gitlab.com:e91e63/terraform-kubernetes-manifests.git//modules/traefik-ingress-route"
+module "event_listener" {
+  source = "../tekton-event-listener"
 
-  domain_info = var.domain_info
-  route_conf = {
-    middlewares  = []
-    path         = local.route_path
-    service_name = "el-${local.conf.webhooks_subdomain}"
-    service_port = 8080
-  }
-  service_conf = {
-    name      = local.conf.webhooks_subdomain
-    namespace = local.conf.namespace
+  conf = {
+    name               = local.labels.pipeline_name
+    namespace          = local.conf.namespace
+    serviceAccountName = local.conf.service_accounts.triggers
+    triggers = [
+      {
+        bindings = [
+          {
+            ref = module.trigger_binding.info.name
+          },
+        ]
+        interceptors = [
+          {
+            params = [
+              {
+                name = "secretRef"
+                value = {
+                  secretKey  = local.conf.interceptors.git.secret_names.webhook_token_key
+                  secretName = local.conf.interceptors.git.secret_names.webhook_token
+                }
+              },
+              {
+                name  = "eventTypes"
+                value = local.conf.interceptors.git.event_types
+              }
+            ]
+            ref = {
+              kind = "Interceptor"
+              name = local.conf.interceptors.git.name
+            }
+          },
+        ]
+        name = local.labels.pipeline_name
+        template = {
+          ref = module.trigger_template.info.name
+        }
+      },
+    ]
   }
 }
 
@@ -152,6 +183,10 @@ module "pipeline" {
             name  = local.labels.context_path
             value = "$(params.${local.labels.context_path_infra})"
           },
+          {
+            name  = local.labels.image_digest
+            value = "$(tasks.${module.task_build.info.name}.results.${local.labels.image_digest})"
+          },
         ]
         resources = {
           inputs = [
@@ -165,7 +200,7 @@ module "pipeline" {
           module.task_build.info.name,
         ]
         taskRef = {
-          name = module.task_build.info.name
+          name = module.task_deploy.info.name
         }
       },
     ]
@@ -237,6 +272,7 @@ module "task_build" {
   }
 }
 
+# TODO: move this out to top level workflows module
 module "task_deploy" {
   source = "../tekton-task"
 
@@ -251,8 +287,8 @@ module "task_deploy" {
         type        = "string"
       },
       {
-        description = "docker image to deploy"
-        name        = local.labels.docker_image
+        description = "digest of docker image to deploy"
+        name        = local.labels.image_digest
         type        = "string"
       },
     ]
@@ -265,6 +301,7 @@ module "task_deploy" {
       ]
     }
     steps = [
+      # TODO: split out git commit step
       {
         "env" = [
           {
@@ -286,9 +323,8 @@ module "task_deploy" {
             }
           },
           {
-            name = "IMAGE"
-            # TODO: split out git commit step
-            value = "$(params.${local.labels.docker_image})"
+            name  = "IMAGE_DIGEST"
+            value = "$(params.${local.labels.image_digest})"
           },
         ]
         image  = var.conf.tasks.deploy.images.terragrunt
@@ -300,7 +336,7 @@ module "task_deploy" {
             mountPath = "/root/.config/sops/age"
           }
         ]
-        workingDir = "$(params.${local.labels.context_path})"
+        workingDir = "$(inputs.resources.git-repo.path)/$(params.${local.labels.context_path})"
       },
     ]
     volumes = [
@@ -346,31 +382,31 @@ module "task_tests" {
     steps = [
       {
         image      = local.conf.tasks.test.steps.dependencies.image
-        name       = "${local.conf.workflow_name}-dependencies"
+        name       = "dependencies"
         script     = local.conf.tasks.test.steps.dependencies.script
         workingDir = "$(params.${local.labels.context_path})"
       },
       {
         image      = local.conf.tasks.test.steps.fmt.image
-        name       = "${local.conf.workflow_name}-fmt"
+        name       = "fmt"
         script     = local.conf.tasks.test.steps.fmt.script
         workingDir = "$(params.${local.labels.context_path})"
       },
       {
         image      = local.conf.tasks.test.steps.lint.image
-        name       = "${local.conf.workflow_name}-lint"
+        name       = "lint"
         script     = local.conf.tasks.test.steps.lint.script
         workingDir = "$(params.${local.labels.context_path})"
       },
       {
         image      = local.conf.tasks.test.steps.unit.image
-        name       = "${local.conf.workflow_name}-unit"
+        name       = "unit"
         script     = local.conf.tasks.test.steps.unit.script
         workingDir = "$(params.${local.labels.context_path})"
       },
       {
         image      = local.conf.tasks.test.steps.e2e.image
-        name       = "${local.conf.workflow_name}-e2e"
+        name       = "e2e"
         script     = local.conf.tasks.test.steps.e2e.script
         workingDir = "$(params.${local.labels.context_path})"
       },
@@ -382,9 +418,39 @@ module "task_tests" {
           }
         ]
         image      = local.conf.tasks.test.steps.version_tag.image
-        name       = "${local.conf.workflow_name}-version-tag"
+        name       = "version-tag"
         script     = local.conf.tasks.test.steps.version_tag.script
         workingDir = "$(params.${local.labels.context_path})"
+      },
+    ]
+  }
+}
+
+module "trigger_binding" {
+  source = "../tekton-trigger-binding"
+
+  conf = {
+    name      = local.labels.pipeline_name
+    namespace = local.conf.namespace
+    params = [
+      {
+        name  = local.labels.context_path_infra
+        value = "digitalocean/cddc39/services/todo"
+        # value = "$(inputs.resources.git-repo.path)/digitalocean/cddc39/services/todo"
+      },
+      {
+        name  = local.labels.git_repo_code_url
+        value = "$(body.repository.git_ssh_url)"
+      },
+      {
+        name = local.labels.git_repo_infra_url
+        # value = "$(body.repository.git_ssh_url)x"
+        value = "git@gitlab.com:dmikalova/infrastructure.git"
+      },
+      {
+        name = local.labels.docker_image_url
+        # value = "$(body.repository.git_ssh_url)x"
+        value = "registry.digitalocean.com/dmikalova/todo"
       },
     ]
   }
@@ -409,17 +475,27 @@ module "trigger_template" {
         description = "the docker image url"
         name        = local.labels.docker_image_url
       },
+      {
+        description = "terragrunt context path"
+        name        = local.labels.context_path_infra
+      }
     ]
     resourcetemplates = [
       {
         kind = "PipelineRun"
         spec = {
+          params = [
+            {
+              name  = local.labels.context_path_infra
+              value = "$(tt.params.${local.labels.context_path_infra})"
+            },
+          ]
           pipelineRef = {
             name = module.pipeline.info.name
           }
           resources = [
             {
-              name = local.labels.docker_image_url
+              name = local.labels.docker_image
               resourceSpec = {
                 params = [
                   {
@@ -471,76 +547,25 @@ module "trigger_template" {
               }
             },
           ]
-          serviceAccountName = local.conf.workers.service_account_name
+          serviceAccountName = local.conf.service_accounts.workers
         }
       },
     ]
   }
 }
 
-output "test" {
-  value = ""
-}
+module "webhook_ingress_route" {
+  source = "git@gitlab.com:e91e63/terraform-kubernetes-manifests.git//modules/traefik-ingress-route"
 
-module "trigger_binding" {
-  source = "../tekton-trigger-binding"
-
-  conf = {
-    name      = local.labels.pipeline_name
+  domain_info = var.domain_info
+  route_conf = {
+    middlewares  = []
+    path         = local.route_path
+    service_name = "el-${module.event_listener.info.name}"
+    service_port = 8080
+  }
+  service_conf = {
+    name      = local.conf.webhooks_subdomain
     namespace = local.conf.namespace
-    params = [
-      {
-        name  = local.labels.git_repo_code_url
-        value = "$(body.repository.git_ssh_url)"
-      },
-      {
-        name  = local.labels.git_repo_infra_url
-        value = "$(body.repository.git_ssh_url)x"
-      },
-    ]
-  }
-}
-
-module "event_listener" {
-  source = "../tekton-event-listener"
-
-  conf = {
-    name               = local.labels.pipeline_name
-    namespace          = local.conf.namespace
-    serviceAccountName = local.conf.triggers.service_account_name
-    triggers = [
-      {
-        bindings = [
-          {
-            ref = module.trigger_binding.info.name
-          },
-        ]
-        interceptors = [
-          {
-            params = [
-              {
-                name = "secretRef"
-                value = {
-                  secretKey  = local.conf.interceptors.git.secret_names.webhook_token_key
-                  secretName = local.conf.interceptors.git.secret_names.webhook_token
-                }
-              },
-              {
-                name  = "eventTypes"
-                value = local.conf.interceptors.git.event_types
-              }
-            ]
-            ref = {
-              kind = "Interceptor"
-              name = local.conf.interceptors.git.name
-            }
-          },
-        ]
-        name = local.labels.pipeline_name
-        template = {
-          ref = module.trigger_template.info.name
-        }
-      },
-    ]
   }
 }

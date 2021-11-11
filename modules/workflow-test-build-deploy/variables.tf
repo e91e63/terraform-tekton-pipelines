@@ -58,14 +58,12 @@ variable "conf" {
         })
       })
     })
-    triggers = object({
-      service_account_name = string
+    service_accounts = object({
+      triggers = string
+      workers  = string
     })
     webhooks_subdomain = string
-    workers = object({
-      service_account_name = string
-    })
-    workflow_name = string
+    workflow_name      = string
   })
 }
 

@@ -7,17 +7,12 @@ variable "conf" {
       node       = string
       terragrunt = string
     })
-    interceptors = any
-    namespace    = string
-    secret_names = any
-    triggers = object({
-      service_account_name = string
-    })
+    interceptors       = any
+    namespace          = string
+    secret_names       = any
+    service_accounts   = any
     webhooks_subdomain = string
-    workers = object({
-      service_account_name = string
-    })
-    workflow_name = optional(string)
+    workflow_name      = optional(string)
   })
 }
 
