@@ -1,10 +1,13 @@
 variable "conf" {
   type = object({
-    images             = any
-    interceptors       = any
+    images = map(string)
+    interceptors = map(object({
+      event_types = list(string)
+      name        = string
+    }))
     namespace          = string
-    secrets            = any
-    service_accounts   = optional(any)
+    secrets            = map(map(string))
+    service_accounts   = optional(map(string))
     webhooks_subdomain = optional(string)
   })
 }
