@@ -3,8 +3,8 @@ set -eu
 if [ "${DEBUG:=}" = true ]; then set -x; fi
 
 echo "Starting $(basename "${0}")"
-CONTAINER_IMAGE="${CONTAINER_IMAGE:?}"
-CONTAINER_IMAGE=$(echo "${CONTAINER_IMAGE}" | sed 's/@.*//')
+IMAGE_DIGEST="${IMAGE_DIGEST:?}"
+IMAGE=$(echo "${IMAGE_DIGEST}" | sed 's/@.*//')
 DIR="${PWD}"
 HCLEDIT_DIR="/tmp/hcledit"
 HCLEDIT_VERSION="0.2.0"
@@ -20,34 +20,24 @@ wget --quiet "${HCLEDIT_URL}" --directory-prefix "${HCLEDIT_DIR}"
 tar -xvzf "hcledit_${HCLEDIT_VERSION}_linux_amd64.tar.gz"
 chmod +x "./hcledit"
 
-echo "Updating terragrunt.hcl with ${CONTAINER_IMAGE}"
+echo "Updating terragrunt.hcl with ${IMAGE}"
 cd "${DIR}"
-"${HCLEDIT_DIR}/hcledit" attribute set locals.image "\"${CONTAINER_IMAGE}\"" --file "./terragrunt.hcl" --update
+"${HCLEDIT_DIR}/hcledit" attribute set "locals.image" "\"${IMAGE}\"" --file "./terragrunt.hcl" --update
 
 GIT_DIFF=$(git status --porcelain)
 if [ -n "${GIT_DIFF}" ]; then
     echo "Committing changes"
-    git config --global "user.name" "Infrastructure robot"
-    git config --global "user.email" "robot@e91e63.tech"
+    # TODO: can this user be created by tf?
+    git config --global "user.name" "Infrastructure automation"
+    git config --global "user.email" "automation@e91e63.tech"
 
     git add .
     git status
     git diff HEAD
-    git commit -a -m "Updating to ${CONTAINER_IMAGE}"
-fi
+    git commit -a -m "Updating to ${IMAGE}"
 
-echo "terragrunt init"
-terragrunt init
-
-echo "terragrunt plan"
-terragrunt plan -out "terraform.plan"
-
-if [ -n "${GIT_DIFF}" ]; then
     echo "Pushing commit"
     git push --set-upstream "origin" "$(git branch --show-current)"
 fi
-
-echo "terragrunt apply"
-terragrunt apply "terraform.plan"
 
 echo "Finished $(basename "${0}")"

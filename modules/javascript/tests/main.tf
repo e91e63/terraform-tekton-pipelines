@@ -10,7 +10,7 @@ module "main" {
   conf = {
     images = {
       default     = local.conf.images.node
-      e2e         = local.conf.images.cypress
+      tests_e2e   = local.conf.images.cypress
       version_tag = local.conf.images.alpine
     }
     labels    = local.conf.labels

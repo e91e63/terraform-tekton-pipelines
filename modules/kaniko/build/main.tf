@@ -47,11 +47,12 @@ module "main" {
     steps = [
       {
         args = [
+          "--cache=true",
           "--context=$(inputs.params.${local.conf.labels.context_path})",
           "--destination=$(outputs.resources.${local.conf.labels.docker_image}.url):$(inputs.params.${local.conf.labels.version_tag})",
           "--dockerfile=$(inputs.params.${local.conf.labels.context_path})/Dockerfile",
           "--image-name-tag-with-digest-file=$(results.${local.conf.labels.docker_image_digest}.path)",
-          "--oci-layout-path=$(outputs.resources.${local.conf.labels.docker_image}.path)"
+          "--oci-layout-path=$(outputs.resources.${local.conf.labels.docker_image}.path)",
         ]
         command = [
           "/kaniko/executor",

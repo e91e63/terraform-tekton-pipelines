@@ -32,7 +32,18 @@ module "main" {
       ]
     }
     steps = [
-      # TODO: split out git commit step
+      {
+        "env" = [
+          {
+            name  = "IMAGE_DIGEST"
+            value = "$(params.${local.conf.labels.docker_image_digest})"
+          },
+        ]
+        image      = var.conf.images.terragrunt
+        name       = "git-commit-push"
+        script     = file("${path.module}/scripts/git-commit-push.sh")
+        workingDir = "$(inputs.resources.${local.conf.labels.git_repo}.path)/$(params.${local.conf.labels.context_path})"
+      },
       {
         "env" = [
           {
@@ -53,13 +64,9 @@ module "main" {
               }
             }
           },
-          {
-            name  = "IMAGE_DIGEST"
-            value = "$(params.${local.conf.labels.docker_image_digest})"
-          },
         ]
         image  = var.conf.images.terragrunt
-        name   = "deploy"
+        name   = "terragrunt-plan-apply"
         script = file("${path.module}/scripts/terragrunt-plan-apply.sh")
         volumeMounts = [
           {
@@ -67,7 +74,7 @@ module "main" {
             mountPath = "/root/.config/sops/age"
           }
         ]
-        workingDir = "$(inputs.resources.git-repo.path)/$(params.${local.conf.labels.context_path})"
+        workingDir = "$(inputs.resources.${local.conf.labels.git_repo}.path)/$(params.${local.conf.labels.context_path})"
       },
     ]
     volumes = [

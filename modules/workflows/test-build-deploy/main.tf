@@ -2,10 +2,6 @@ locals {
   conf = defaults(var.conf, {
     pipeline_name = "${var.conf.name}-test-build-deploy"
   })
-
-  route_path = module.event_listener.info.name
-  # TODO: move generation to ingress module
-  webhook_url = "https://${local.conf.webhooks_subdomain}.${var.domain_info.name}/${local.route_path}"
 }
 
 module "event_listener" {
@@ -295,13 +291,13 @@ module "trigger_template" {
   }
 }
 
-module "webhook_ingress_route" {
+module "webhook_ingress" {
   source = "git@gitlab.com:e91e63/terraform-kubernetes-manifests.git//modules/traefik-ingress-route"
 
   domain_info = var.domain_info
   route_conf = {
     middlewares  = []
-    path         = local.route_path
+    path         = module.event_listener.info.name
     service_name = "el-${module.event_listener.info.name}"
     service_port = 8080
   }
