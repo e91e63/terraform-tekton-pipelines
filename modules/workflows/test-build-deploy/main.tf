@@ -292,18 +292,20 @@ module "trigger_template" {
 }
 
 module "webhook_ingress" {
-  source = "git@gitlab.com:e91e63/terraform-kubernetes-manifests.git//modules/traefik-ingress-route"
+  source = "git@gitlab.com:e91e63/terraform-kubernetes-manifests.git//modules/traefik/ingress-route"
 
   domain_info = var.domain_info
-  route_conf = {
-    middlewares  = []
-    path         = module.event_listener.info.name
-    service_name = "el-${module.event_listener.info.name}"
-    service_port = 8080
-  }
-  service_conf = {
-    name      = local.conf.webhooks_subdomain
-    namespace = local.conf.namespace
+  conf = {
+    middlewares = []
+    route = {
+      path = module.event_listener.info.name
+    }
+    service = {
+      name      = "el-${module.event_listener.info.name}"
+      namespace = local.conf.namespace
+      port      = 8080
+    }
+    subdomain = local.conf.webhooks_subdomain
   }
 }
 
