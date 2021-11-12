@@ -296,10 +296,9 @@ module "webhook_ingress" {
 
   domain_info = var.domain_info
   conf = {
+    # TODO: pass in the public middleware
     middlewares = []
-    route = {
-      path = module.event_listener.info.name
-    }
+    path        = "/${module.event_listener.info.name}"
     service = {
       name      = "el-${module.event_listener.info.name}"
       namespace = local.conf.namespace
