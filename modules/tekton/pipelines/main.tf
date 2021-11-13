@@ -11,7 +11,6 @@ locals {
     )] },
     { tasks = [for task in var.conf.tasks : merge(
       { for k, v in task : k => v if v != null },
-      task.resources != null ? { resources = { for k, v in task.resources : k => v if v != null } } : {},
       { taskRef = {
         # set default kind
         kind = task.taskRef.kind == null ? "Task" : task.taskRef.kind
@@ -32,7 +31,6 @@ resource "kubernetes_manifest" "main" {
     spec = { for k, v in {
       description = local.conf.description
       params      = local.conf.params
-      resources   = local.conf.resources
       tasks       = local.conf.tasks
       workspaces  = local.conf.workspaces
     } : k => v if v != [] }

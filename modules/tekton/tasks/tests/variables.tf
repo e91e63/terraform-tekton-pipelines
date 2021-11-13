@@ -14,7 +14,6 @@ variable "conf" {
       git_repo_workspace = string
       context_path       = string
       version_tag        = string
-      working_dir        = string
     })
     name      = string
     namespace = string
@@ -26,6 +25,7 @@ variable "conf" {
       tests_unit   = string
       version_tag  = string
     })
+    working_dir = string
     workspaces = optional(list(object({
       name      = string
       workspace = string

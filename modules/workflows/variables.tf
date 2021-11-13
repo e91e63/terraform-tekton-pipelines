@@ -6,10 +6,15 @@ variable "conf" {
       event_types = list(string)
       name        = string
     }))
-    namespace          = string
-    secrets            = map(map(string))
-    service_accounts   = optional(map(string))
-    webhooks_subdomain = optional(string)
+    labels           = optional(map(string))
+    namespace        = string
+    secrets          = map(map(string))
+    service_accounts = optional(map(string))
+    webhooks = object({
+      middlewares = list(map(string))
+      subdomain   = optional(string)
+    })
+    working_dir = optional(string)
   })
 }
 

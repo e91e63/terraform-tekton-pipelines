@@ -65,18 +65,16 @@ module "pipeline" {
         name        = local.conf.labels.context_path_infra
       },
       {
+        description = "docker image url"
+        name        = local.conf.labels.docker_image_url
+      },
+      {
         description = "git code repo url"
         name        = local.conf.labels.git_repo_code_url
       },
       {
         description = "git infra repo url"
         name        = local.conf.labels.git_repo_infra_url
-      },
-    ]
-    resources = [
-      {
-        name = local.conf.labels.docker_image
-        type = "image"
       },
     ]
     tasks = [
@@ -127,18 +125,14 @@ module "pipeline" {
             value = "$(params.${local.conf.labels.context_path_code})"
           },
           {
+            name  = local.conf.labels.docker_image_url
+            value = "$(params.${local.conf.labels.docker_image_url})"
+          },
+          {
             name  = local.conf.labels.version_tag
             value = "$(tasks.${local.conf.tasks.tests}.results.${local.conf.labels.version_tag})"
           },
         ]
-        resources = {
-          outputs = [
-            {
-              name     = local.conf.labels.docker_image
-              resource = local.conf.labels.docker_image
-            },
-          ]
-        }
         runAfter = [
           local.conf.tasks.tests,
         ]
@@ -213,8 +207,16 @@ module "trigger_binding" {
     namespace = local.conf.namespace
     params = [
       {
+        name  = local.conf.labels.context_path_code
+        value = "$(body.project.name)"
+      },
+      {
         name  = local.conf.labels.context_path_infra
-        value = "digitalocean/$(body.project.namespace)/services/$(body.project.name)"
+        value = "infrastructure/digitalocean/$(body.project.namespace)/services/$(body.project.name)"
+      },
+      {
+        name  = local.conf.labels.docker_image_url
+        value = "registry.digitalocean.com/dmikalova/$(body.project.namespace)/$(body.project.name)"
       },
       {
         name  = local.conf.labels.git_repo_code_url
@@ -223,10 +225,6 @@ module "trigger_binding" {
       {
         name  = local.conf.labels.git_repo_infra_url
         value = local.conf.bindings.git_repo_infra_url
-      },
-      {
-        name  = local.conf.labels.docker_image_url
-        value = "registry.digitalocean.com/dmikalova/$(body.project.namespace)/$(body.project.name)"
       },
     ]
   }
@@ -248,16 +246,16 @@ module "trigger_template" {
         name        = local.conf.labels.context_path_infra
       },
       {
-        description = "the ${local.conf.name} repo to build, test, and deploy"
+        description = "docker image url"
+        name        = local.conf.labels.docker_image_url
+      },
+      {
+        description = "${local.conf.name} repo to build, test, and deploy"
         name        = local.conf.labels.git_repo_code_url
       },
       {
-        description = "the infrastructure configuration repo to update for deploys"
+        description = "infrastructure configuration repo to update for deploys"
         name        = local.conf.labels.git_repo_infra_url
-      },
-      {
-        description = "the docker image url"
-        name        = local.conf.labels.docker_image_url
       },
     ]
     resourcetemplates = [
@@ -274,6 +272,10 @@ module "trigger_template" {
               value = "$(tt.params.${local.conf.labels.context_path_infra})"
             },
             {
+              name  = local.conf.labels.docker_image_url
+              value = "$(tt.params.${local.conf.labels.docker_image_url})"
+            },
+            {
               name  = local.conf.labels.git_repo_code_url
               value = "$(tt.params.${local.conf.labels.git_repo_code_url})"
             },
@@ -285,20 +287,6 @@ module "trigger_template" {
           pipelineRef = {
             name = module.pipeline.info.name
           }
-          resources = [
-            {
-              name = local.conf.labels.docker_image
-              resourceSpec = {
-                params = [
-                  {
-                    name  = "url"
-                    value = "$(tt.params.${local.conf.labels.docker_image_url})"
-                  },
-                ]
-                type = "image"
-              }
-            },
-          ]
           serviceAccountName = local.conf.service_accounts.workers
           workspaces = [
             {
@@ -328,15 +316,14 @@ module "webhook_ingress" {
 
   domain_info = var.domain_info
   conf = {
-    # TODO: pass in the public middleware
-    middlewares = []
+    middlewares = local.conf.webhooks.middlewares
     path        = "/${module.event_listener.info.name}"
     service = {
       name      = "el-${module.event_listener.info.name}"
       namespace = local.conf.namespace
       port      = 8080
     }
-    subdomain = local.conf.webhooks_subdomain
+    subdomain = local.conf.webhooks.subdomain
   }
 }
 

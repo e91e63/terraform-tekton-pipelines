@@ -32,7 +32,7 @@ module "main" {
         image      = var.conf.images.terragrunt
         name       = "git-commit-push"
         script     = file("${path.module}/../../git/scripts/git-commit-push.sh")
-        workingDir = local.conf.labels.working_dir
+        workingDir = local.conf.working_dir
       },
       {
         "env" = [
@@ -64,7 +64,7 @@ module "main" {
             mountPath = "/root/.config/sops/age"
           }
         ]
-        workingDir = local.conf.labels.working_dir
+        workingDir = local.conf.working_dir
       },
     ]
     volumes = [

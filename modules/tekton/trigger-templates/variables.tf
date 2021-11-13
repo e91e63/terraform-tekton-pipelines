@@ -2,37 +2,27 @@ variable "conf" {
   type = object({
     name      = string
     namespace = string
-    params = optional(list(object({
+    params = list(object({
       default     = optional(string)
       description = string
       name        = string
-    })))
+    }))
     resourcetemplates = list(object({
-      apiVersion = optional(string)
-      kind       = string
+      kind = string
+      metadata = optional(object({
+        generateName = optional(string)
+        namespace    = optional(string)
+      }))
       spec = object({
-        params = optional(list(object({
+        params = list(object({
           name  = string
           value = string
-        })))
-        pipelineRef = optional(object({
-          name = string
         }))
-        resources = optional(list(object({
+        pipelineRef = object({
           name = string
-          resourceRef = optional(object({
-            name = string
-          }))
-          resourceSpec = optional(object({
-            params = optional(list(object({
-              name  = string
-              value = string
-            })))
-            type = string
-          }))
-        })))
+        })
         serviceAccountName = string
-        workspaces = optional(list(object({
+        workspaces = list(object({
           name = string
           volumeClaimTemplate = object({
             spec = object({
@@ -44,7 +34,7 @@ variable "conf" {
               })
             })
           })
-        })))
+        }))
       })
     }))
   })

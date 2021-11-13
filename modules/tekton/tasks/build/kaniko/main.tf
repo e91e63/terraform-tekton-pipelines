@@ -17,18 +17,14 @@ module "main" {
         name        = local.conf.labels.context_path
       },
       {
+        description = "docker image url"
+        name        = local.conf.labels.docker_image_url
+      },
+      {
         description = "version tag for container artifact"
         name        = local.conf.labels.version_tag
       },
     ]
-    resources = {
-      outputs = [
-        {
-          name = local.conf.labels.docker_image
-          type = "image"
-        },
-      ]
-    }
     results = [
       {
         name        = local.conf.labels.docker_image_digest
@@ -39,11 +35,11 @@ module "main" {
       {
         args = [
           "--cache=true",
-          "--context=${local.conf.labels.working_dir}",
-          "--destination=$(outputs.resources.${local.conf.labels.docker_image}.url):$(params.${local.conf.labels.version_tag})",
-          "--dockerfile=$(${local.conf.labels.working_dir})/Dockerfile",
+          "--context=${local.conf.working_dir}",
+          "--destination=$(params.${local.conf.labels.docker_image_url}):$(params.${local.conf.labels.version_tag})",
+          "--dockerfile=${local.conf.working_dir}/Dockerfile",
           "--image-name-tag-with-digest-file=$(results.${local.conf.labels.docker_image_digest}.path)",
-          "--oci-layout-path=$(outputs.resources.${local.conf.labels.docker_image}.path)",
+          # "--oci-layout-path=$(outputs.resources.${local.conf.labels.docker_image}.path)",
         ]
         command = [
           "/kaniko/executor",

@@ -9,7 +9,6 @@ variable "conf" {
       docker_image_digest = string
       git_repo            = string
       git_repo_workspace  = string
-      working_dir         = string
     })
     name      = optional(string)
     namespace = string
@@ -17,6 +16,7 @@ variable "conf" {
       age_keys_file          = string
       terraform_remote_state = string
     })
+    working_dir = string
     workspaces = optional(list(object({
       name      = string
       workspace = string

@@ -41,8 +41,11 @@ variable "conf" {
       triggers = string
       workers  = string
     })
-    webhooks_subdomain = string
-    workflow_name      = string
+    webhooks = object({
+      middlewares = list(map(string))
+      subdomain   = string
+    })
+    workflow_name = string
   })
 }
 

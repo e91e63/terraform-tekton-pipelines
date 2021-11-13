@@ -35,31 +35,31 @@ module "main" {
         image      = local.conf.images.dependencies
         name       = "dependencies"
         script     = local.conf.scripts.dependencies
-        workingDir = local.conf.labels.working_dir
+        workingDir = local.conf.working_dir
       },
       {
         image      = local.conf.images.fmt
         name       = "fmt"
         script     = local.conf.scripts.fmt
-        workingDir = local.conf.labels.working_dir
+        workingDir = local.conf.working_dir
       },
       {
         image      = local.conf.images.lint
         name       = "lint"
         script     = local.conf.scripts.lint
-        workingDir = local.conf.labels.working_dir
+        workingDir = local.conf.working_dir
       },
       {
         image      = local.conf.images.tests_unit
         name       = "tests-unit"
         script     = local.conf.scripts.tests_unit
-        workingDir = local.conf.labels.working_dir
+        workingDir = local.conf.working_dir
       },
       {
         image      = local.conf.images.tests_e2e
         name       = "tests-e2e"
         script     = local.conf.scripts.tests_e2e
-        workingDir = local.conf.labels.working_dir
+        workingDir = local.conf.working_dir
       },
       {
         env = [
@@ -71,7 +71,7 @@ module "main" {
         image      = local.conf.images.version_tag
         name       = "version-tag"
         script     = local.conf.scripts.version_tag
-        workingDir = local.conf.labels.working_dir
+        workingDir = local.conf.working_dir
       },
     ]
     workspaces = [

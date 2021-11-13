@@ -9,25 +9,11 @@ variable "conf" {
       name        = string
       type        = optional(string)
     }))
-    resources = list(object({
-      name = string
-      type = string
-    }))
     tasks = list(object({
       name = string
       params = list(object({
         name  = string
         value = string
-      }))
-      resources = optional(object({
-        inputs = optional(list(object({
-          name     = string
-          resource = string
-        })))
-        outputs = optional(list(object({
-          name     = string
-          resource = string
-        })))
       }))
       runAfter = optional(list(string))
       taskRef = object({

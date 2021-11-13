@@ -1,32 +1,28 @@
 locals {
-  conf = merge(
-    defaults(var.conf, {
-      webhooks_subdomain = "webhooks"
-    }),
-    { labels = {
-      age_keys_file       = "age-keys-file"
-      context_path        = local.context_path
-      context_path_code   = "context-path-code"
-      context_path_infra  = "context-path-infra"
-      docker_image        = "docker-image"
-      docker_image_digest = "docker-image-digest"
-      docker_image_url    = "docker-image-url"
-      git_clone_code      = "git-clone-code"
-      git_clone_infra     = "git-clone-infra"
-      git_repo            = "git-repo"
-      git_repo_url        = "git-repo-url"
-      git_repo_workspace  = local.git_repo_workspace
-      git_repo_code       = "git-repo-code"
-      git_repo_code_url   = "git-repo-code-url"
-      git_repo_infra      = "git-repo-infra"
-      git_repo_infra_url  = "git-repo-infra-url"
-      version_tag         = "version-tag"
-      working_dir         = "$(workspace.${local.git_repo_workspace}.path)/$(params.${local.context_path})"
-      webhook_token       = "webhook-token"
-    } },
-  )
-  context_path       = "context-path"
-  git_repo_workspace = "git-repo-workspace"
+  conf = defaults(merge(var.conf, { labels = local.labels }), {
+    webhooks    = { subdomain = "webhooks" }
+    working_dir = "$(workspaces.${local.labels.git_repo_workspace}.path)/$(params.${local.labels.context_path})"
+  })
+  labels = {
+    age_keys_file       = "age-keys-file"
+    context_path        = "context-path"
+    context_path_code   = "context-path-code"
+    context_path_infra  = "context-path-infra"
+    docker_image        = "docker-image"
+    docker_image_digest = "docker-image-digest"
+    docker_image_url    = "docker-image-url"
+    git_clone_code      = "git-clone-code"
+    git_clone_infra     = "git-clone-infra"
+    git_repo            = "git-repo"
+    git_repo_code       = "git-repo-code"
+    git_repo_code_url   = "git-repo-code-url"
+    git_repo_infra      = "git-repo-infra"
+    git_repo_infra_url  = "git-repo-infra-url"
+    git_repo_url        = "git-repo-url"
+    git_repo_workspace  = "git-repo-workspace"
+    version_tag         = "version-tag"
+    webhook_token       = "webhook-token"
+  }
 }
 
 module "javascript" {

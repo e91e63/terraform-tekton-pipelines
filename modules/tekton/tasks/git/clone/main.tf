@@ -13,6 +13,11 @@ module "main" {
     namespace   = local.conf.namespace
     params = [
       {
+        default     = "./"
+        description = "dir to clone into"
+        name        = local.conf.labels.context_path
+      },
+      {
         description = "git repo to clone"
         name        = local.conf.labels.git_repo_url
       },
@@ -28,7 +33,7 @@ module "main" {
         image      = var.conf.images.alpine
         name       = local.conf.name
         script     = file("${path.module}/../scripts/git-clone.sh")
-        workingDir = "$(workspaces.${local.conf.labels.git_repo_workspace}.path)"
+        workingDir = local.conf.working_dir
       },
     ]
     workspaces = [
