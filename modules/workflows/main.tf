@@ -1,8 +1,13 @@
 locals {
-  conf = defaults(merge(var.conf, { labels = local.labels }), {
-    webhooks    = { subdomain = "webhooks" }
-    working_dir = "$(workspaces.${local.labels.git_repo_workspace}.path)/$(params.${local.labels.context_path})"
-  })
+  conf = merge(
+    # { labels = local.labels },
+    defaults(var.conf, {
+      webhooks = {
+        # middlewares = "test"
+        subdomain = "webhooks"
+      }
+      working_dir = "$(workspaces.${local.labels.git_repo_workspace}.path)/$(params.${local.labels.context_path})"
+  }))
   labels = {
     age_keys_file       = "age-keys-file"
     context_path        = "context-path"
