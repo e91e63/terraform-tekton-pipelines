@@ -9,10 +9,6 @@ variable "conf" {
     }))
     resourcetemplates = list(object({
       kind = string
-      metadata = optional(object({
-        generateName = optional(string)
-        namespace    = optional(string)
-      }))
       spec = object({
         params = list(object({
           name  = string

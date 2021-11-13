@@ -4,7 +4,7 @@ locals {
 
 resource "kubernetes_manifest" "main" {
   manifest = {
-    apiVersion = "triggers.tekton.dev/v1alpha1"
+    apiVersion = "triggers.tekton.dev/v1beta1"
     kind       = "TriggerBinding"
     metadata = {
       name      = local.conf.name

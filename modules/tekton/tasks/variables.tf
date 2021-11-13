@@ -9,16 +9,6 @@ variable "conf" {
       name        = string
       type        = optional(string)
     }))
-    resources = optional(object({
-      inputs = optional(list(object({
-        name = string
-        type = string
-      })))
-      outputs = optional(list(object({
-        name = string
-        type = string
-      })))
-    }))
     results = optional(list(object({
       name        = string
       description = string

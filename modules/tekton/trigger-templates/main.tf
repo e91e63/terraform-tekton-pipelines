@@ -1,24 +1,21 @@
 locals {
   conf = jsondecode(jsonencode(merge(
-    defaults(var.conf, {
-      resourcetemplates = {
-        metadata = {
-          generateName = "${var.conf.name}-$(uid)"
-          namespace    = var.conf.namespace
-        }
-      }
-    }),
+    defaults(var.conf, {}),
     # remove null values
     { params = [for param in var.conf.params : {
       for k, v in param : k => v if v != null
     }] },
-    # { resourcetemplates = [for template in var.conf.resourcetemplates : merge(
-    #   # Set defaults
-    #   { metadata = {
-    #     generateName = "${var.conf.name}-$(uid)"
-    #     namespace    = var.conf.namespace
-    #   } },
-    # )] },
+    # Set default values
+    { resourcetemplates = [for template in var.conf.resourcetemplates : merge(
+      { for k, v in template : k => v if v != null },
+      {
+        apiVersion = "tekton.dev/v1beta1"
+        metadata = {
+          generateName = "${var.conf.name}-$(uid)"
+          namespace    = var.conf.namespace
+        }
+      },
+    )] },
   )))
 }
 

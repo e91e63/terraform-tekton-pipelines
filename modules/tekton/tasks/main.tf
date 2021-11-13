@@ -10,7 +10,6 @@ locals {
       { type = "string" },
       { for k, v in param : k => v if v != null },
     )] },
-    var.conf.resources != null ? { resources = { for k, v in var.conf.resources : k => v if v != null } } : {},
     { steps = [for step in var.conf.steps : merge(
       # set default resources
       { resources = {} },
@@ -25,7 +24,7 @@ locals {
 
 resource "kubernetes_manifest" "main" {
   manifest = {
-    apiVersion = "tekton.dev/v1alpha1"
+    apiVersion = "tekton.dev/v1beta1"
     kind       = "Task"
     metadata = {
       name      = local.conf.name
@@ -34,7 +33,6 @@ resource "kubernetes_manifest" "main" {
     spec = { for k, v in {
       description = local.conf.description
       params      = local.conf.params
-      resources   = local.conf.resources
       results     = local.conf.results
       steps       = local.conf.steps
       volumes     = local.conf.volumes

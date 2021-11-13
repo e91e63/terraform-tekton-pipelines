@@ -39,7 +39,6 @@ module "main" {
           "--destination=$(params.${local.conf.labels.docker_image_url}):$(params.${local.conf.labels.version_tag})",
           "--dockerfile=${local.conf.working_dir}/Dockerfile",
           "--image-name-tag-with-digest-file=$(results.${local.conf.labels.docker_image_digest}.path)",
-          # "--oci-layout-path=$(outputs.resources.${local.conf.labels.docker_image}.path)",
         ]
         command = [
           "/kaniko/executor",
