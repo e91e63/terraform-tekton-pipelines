@@ -20,24 +20,14 @@ module "main" {
     namespace   = local.conf.namespace
     params = [
       {
-        default     = "$(resources.inputs.${local.conf.labels.git_repo}.path)"
         description = "repo directory where test scripts are run"
         name        = local.conf.labels.context_path
-        type        = "string"
       },
     ]
-    resources = {
-      inputs = [
-        {
-          name = local.conf.labels.git_repo
-          type = "git"
-        },
-      ]
-    }
     results = [
       {
-        name        = local.conf.labels.version_tag
         description = "version tag for build artifacts"
+        name        = local.conf.labels.version_tag
       },
     ]
     steps = [
@@ -45,31 +35,31 @@ module "main" {
         image      = local.conf.images.dependencies
         name       = "dependencies"
         script     = local.conf.scripts.dependencies
-        workingDir = "$(params.${local.conf.labels.context_path})"
+        workingDir = local.conf.labels.working_dir
       },
       {
         image      = local.conf.images.fmt
         name       = "fmt"
         script     = local.conf.scripts.fmt
-        workingDir = "$(params.${local.conf.labels.context_path})"
+        workingDir = local.conf.labels.working_dir
       },
       {
         image      = local.conf.images.lint
         name       = "lint"
         script     = local.conf.scripts.lint
-        workingDir = "$(params.${local.conf.labels.context_path})"
+        workingDir = local.conf.labels.working_dir
       },
       {
         image      = local.conf.images.tests_unit
         name       = "tests-unit"
         script     = local.conf.scripts.tests_unit
-        workingDir = "$(params.${local.conf.labels.context_path})"
+        workingDir = local.conf.labels.working_dir
       },
       {
         image      = local.conf.images.tests_e2e
         name       = "tests-e2e"
         script     = local.conf.scripts.tests_e2e
-        workingDir = "$(params.${local.conf.labels.context_path})"
+        workingDir = local.conf.labels.working_dir
       },
       {
         env = [
@@ -81,7 +71,12 @@ module "main" {
         image      = local.conf.images.version_tag
         name       = "version-tag"
         script     = local.conf.scripts.version_tag
-        workingDir = "$(params.${local.conf.labels.context_path})"
+        workingDir = local.conf.labels.working_dir
+      },
+    ]
+    workspaces = [
+      {
+        name = local.conf.labels.git_repo_workspace
       },
     ]
   }

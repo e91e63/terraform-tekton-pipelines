@@ -1,19 +1,17 @@
 variable "conf" {
   type = object({
-    images = map(string)
-    labels = map(string)
+    bindings = map(string)
+    images   = map(string)
+    labels   = map(string)
     interceptors = map(object({
       event_types = list(string)
       name        = string
     }))
-    name             = optional(string)
-    namespace        = string
-    secret_names     = map(string)
-    service_accounts = map(string)
-    tasks = object({
-      build  = string
-      deploy = string
-    })
+    name               = optional(string)
+    namespace          = string
+    secret_names       = map(string)
+    service_accounts   = map(string)
+    tasks              = map(string)
     webhooks_subdomain = string
     workflow_name      = optional(string)
   })

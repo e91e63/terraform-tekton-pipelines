@@ -1,6 +1,7 @@
 variable "conf" {
   type = object({
-    images = map(string)
+    bindings = map(string)
+    images   = map(string)
     interceptors = map(object({
       event_types = list(string)
       name        = string

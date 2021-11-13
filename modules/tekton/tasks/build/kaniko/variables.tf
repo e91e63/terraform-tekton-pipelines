@@ -5,7 +5,9 @@ variable "conf" {
       docker_image        = string
       docker_image_digest = string
       git_repo            = string
+      git_repo_workspace  = string
       version_tag         = string
+      working_dir         = string
     })
     images = object({
       kaniko = string

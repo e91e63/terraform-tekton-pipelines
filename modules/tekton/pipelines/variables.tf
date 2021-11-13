@@ -7,7 +7,7 @@ variable "conf" {
       default     = optional(string)
       description = string
       name        = string
-      type        = string
+      type        = optional(string)
     }))
     resources = list(object({
       name = string
@@ -19,21 +19,28 @@ variable "conf" {
         name  = string
         value = string
       }))
-      resources = object({
-        inputs = list(object({
+      resources = optional(object({
+        inputs = optional(list(object({
           name     = string
           resource = string
-        }))
+        })))
         outputs = optional(list(object({
           name     = string
           resource = string
         })))
-      })
+      }))
       runAfter = optional(list(string))
       taskRef = object({
         kind = optional(string)
         name = string
       })
+      workspaces = optional(list(object({
+        name      = string
+        workspace = string
+      })))
     }))
+    workspaces = optional(list(object({
+      name = string
+    })))
   })
 }

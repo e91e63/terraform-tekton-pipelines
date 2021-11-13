@@ -32,6 +32,19 @@ variable "conf" {
           }))
         })))
         serviceAccountName = string
+        workspaces = optional(list(object({
+          name = string
+          volumeClaimTemplate = object({
+            spec = object({
+              accessModes = list(string)
+              resources = object({
+                requests = object({
+                  storage = string
+                })
+              })
+            })
+          })
+        })))
       })
     }))
   })

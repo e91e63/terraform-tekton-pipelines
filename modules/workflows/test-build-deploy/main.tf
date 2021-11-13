@@ -57,15 +57,20 @@ module "pipeline" {
     namespace   = local.conf.namespace
     params = [
       {
-        default     = "$(resources.inputs.${local.conf.labels.git_repo}.path)"
         description = "code context path"
         name        = local.conf.labels.context_path_code
-        type        = "string"
       },
       {
-        description = "terragrunt context path"
+        description = "infra context path"
         name        = local.conf.labels.context_path_infra
-        type        = "string"
+      },
+      {
+        description = "git code repo url"
+        name        = local.conf.labels.git_repo_code_url
+      },
+      {
+        description = "git infra repo url"
+        name        = local.conf.labels.git_repo_infra_url
       },
     ]
     resources = [
@@ -73,16 +78,26 @@ module "pipeline" {
         name = local.conf.labels.docker_image
         type = "image"
       },
-      {
-        name = local.conf.labels.git_repo_code
-        type = "git"
-      },
-      {
-        name = local.conf.labels.git_repo_infra
-        type = "git"
-      },
     ]
     tasks = [
+      {
+        name = local.conf.labels.git_clone_code
+        params = [
+          {
+            name  = local.conf.labels.git_repo_url
+            value = "$(params.${local.conf.labels.git_repo_code_url})"
+          },
+        ]
+        taskRef = {
+          name = local.conf.tasks.git_clone
+        }
+        workspaces = [
+          {
+            name      = local.conf.labels.git_repo_workspace
+            workspace = local.conf.labels.git_repo_workspace
+          },
+        ]
+      },
       {
         name = local.conf.tasks.tests
         params = [
@@ -91,46 +106,72 @@ module "pipeline" {
             value = "$(params.${local.conf.labels.context_path_code})"
           },
         ]
-        resources = {
-          inputs = [
-            {
-              name     = local.conf.labels.git_repo
-              resource = local.conf.labels.git_repo_code
-            },
-          ]
-        }
+        runAfter = [
+          local.conf.labels.git_clone_code,
+        ]
         taskRef = {
           name = local.conf.tasks.tests
         }
+        workspaces = [
+          {
+            name      = local.conf.labels.git_repo_workspace
+            workspace = local.conf.labels.git_repo_workspace
+          },
+        ]
       },
       {
         name = local.conf.tasks.build
         params = [
+          {
+            name  = local.conf.labels.context_path
+            value = "$(params.${local.conf.labels.context_path_code})"
+          },
           {
             name  = local.conf.labels.version_tag
             value = "$(tasks.${local.conf.tasks.tests}.results.${local.conf.labels.version_tag})"
           },
         ]
         resources = {
-          inputs = [
-            {
-              name     = local.conf.labels.git_repo
-              resource = local.conf.labels.git_repo_code
-            },
-          ]
-          "outputs" = [
+          outputs = [
             {
               name     = local.conf.labels.docker_image
               resource = local.conf.labels.docker_image
             },
           ]
         }
-        "runAfter" = [
+        runAfter = [
           local.conf.tasks.tests,
         ]
         taskRef = {
           name = local.conf.tasks.build
         }
+        workspaces = [
+          {
+            name      = local.conf.labels.git_repo_workspace
+            workspace = local.conf.labels.git_repo_workspace
+          },
+        ]
+      },
+      {
+        name = local.conf.labels.git_clone_infra
+        params = [
+          {
+            name  = local.conf.labels.git_repo_url
+            value = "$(params.${local.conf.labels.git_repo_infra_url})"
+          },
+        ]
+        runAfter = [
+          local.conf.tasks.build,
+        ]
+        taskRef = {
+          name = local.conf.tasks.git_clone
+        }
+        workspaces = [
+          {
+            name      = local.conf.labels.git_repo_workspace
+            workspace = local.conf.labels.git_repo_workspace
+          },
+        ]
       },
       {
         name = local.conf.tasks.deploy
@@ -144,21 +185,22 @@ module "pipeline" {
             value = "$(tasks.${local.conf.tasks.build}.results.${local.conf.labels.docker_image_digest})"
           },
         ]
-        resources = {
-          inputs = [
-            {
-              name     = local.conf.labels.git_repo
-              resource = local.conf.labels.git_repo_infra
-            },
-          ]
-        }
-        "runAfter" = [
-          local.conf.tasks.build,
+        runAfter = [
+          local.conf.labels.git_clone_infra,
         ]
         taskRef = {
           name = local.conf.tasks.deploy
         }
+        workspaces = [
+          {
+            name      = local.conf.labels.git_repo_workspace
+            workspace = local.conf.labels.git_repo_workspace
+          },
+        ]
       },
+    ]
+    workspaces = [
+      { name = local.conf.labels.git_repo_workspace },
     ]
   }
 }
@@ -172,22 +214,19 @@ module "trigger_binding" {
     params = [
       {
         name  = local.conf.labels.context_path_infra
-        value = "digitalocean/cddc39/services/todo"
-        # value = "$(inputs.resources.git-repo.path)/digitalocean/cddc39/services/todo"
+        value = "digitalocean/$(body.project.namespace)/services/$(body.project.name)"
       },
       {
         name  = local.conf.labels.git_repo_code_url
-        value = "$(body.repository.git_ssh_url)"
+        value = "$(body.project.git_ssh_url)"
       },
       {
-        name = local.conf.labels.git_repo_infra_url
-        # value = "$(body.repository.git_ssh_url)x"
-        value = "git@gitlab.com:dmikalova/infrastructure.git"
+        name  = local.conf.labels.git_repo_infra_url
+        value = local.conf.bindings.git_repo_infra_url
       },
       {
-        name = local.conf.labels.docker_image_url
-        # value = "$(body.repository.git_ssh_url)x"
-        value = "registry.digitalocean.com/dmikalova/todo"
+        name  = local.conf.labels.docker_image_url
+        value = "registry.digitalocean.com/dmikalova/$(body.project.namespace)/$(body.project.name)"
       },
     ]
   }
@@ -201,6 +240,14 @@ module "trigger_template" {
     namespace = local.conf.namespace
     params = [
       {
+        description = "code context path"
+        name        = local.conf.labels.context_path_code
+      },
+      {
+        description = "infra context path"
+        name        = local.conf.labels.context_path_infra
+      },
+      {
         description = "the ${local.conf.name} repo to build, test, and deploy"
         name        = local.conf.labels.git_repo_code_url
       },
@@ -212,10 +259,6 @@ module "trigger_template" {
         description = "the docker image url"
         name        = local.conf.labels.docker_image_url
       },
-      {
-        description = "terragrunt context path"
-        name        = local.conf.labels.context_path_infra
-      }
     ]
     resourcetemplates = [
       {
@@ -223,8 +266,20 @@ module "trigger_template" {
         spec = {
           params = [
             {
+              name  = local.conf.labels.context_path_code
+              value = "$(tt.params.${local.conf.labels.context_path_code})"
+            },
+            {
               name  = local.conf.labels.context_path_infra
               value = "$(tt.params.${local.conf.labels.context_path_infra})"
+            },
+            {
+              name  = local.conf.labels.git_repo_code_url
+              value = "$(tt.params.${local.conf.labels.git_repo_code_url})"
+            },
+            {
+              name  = local.conf.labels.git_repo_infra_url
+              value = "$(tt.params.${local.conf.labels.git_repo_infra_url})"
             },
           ]
           pipelineRef = {
@@ -243,48 +298,25 @@ module "trigger_template" {
                 type = "image"
               }
             },
+          ]
+          serviceAccountName = local.conf.service_accounts.workers
+          workspaces = [
             {
-              name = local.conf.labels.git_repo_infra
-              resourceSpec = {
-                params = [
-                  {
-                    name  = "refspec"
-                    value = "refs/heads/main:refs/heads/main"
-                  },
-                  {
-                    name  = "revision"
-                    value = "main"
-                  },
-                  {
-                    name  = "url"
-                    value = "$(tt.params.${local.conf.labels.git_repo_infra_url})"
-                  },
-                ]
-                type = "git"
-              }
-            },
-            {
-              name = local.conf.labels.git_repo_code
-              resourceSpec = {
-                params = [
-                  {
-                    name  = "refspec"
-                    value = "refs/heads/main:refs/heads/main"
-                  },
-                  {
-                    name  = "revision"
-                    value = "main"
-                  },
-                  {
-                    name  = "url"
-                    value = "$(tt.params.${local.conf.labels.git_repo_code_url})"
-                  },
-                ]
-                type = "git"
+              name = local.conf.labels.git_repo_workspace
+              volumeClaimTemplate = {
+                spec = {
+                  accessModes = [
+                    "ReadWriteOnce"
+                  ]
+                  resources = {
+                    requests = {
+                      storage = "1Gi"
+                    }
+                  }
+                }
               }
             },
           ]
-          serviceAccountName = local.conf.service_accounts.workers
         }
       },
     ]

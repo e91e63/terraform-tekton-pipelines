@@ -5,7 +5,7 @@ locals {
 }
 
 module "main" {
-  source = "../../tekton/tasks"
+  source = "../../../../tekton/tasks"
 
   conf = {
     description = "deploy container to infrastructure"
@@ -15,22 +15,12 @@ module "main" {
       {
         description = "terragrunt context"
         name        = local.conf.labels.context_path
-        type        = "string"
       },
       {
         description = "digest of docker image to deploy"
         name        = local.conf.labels.docker_image_digest
-        type        = "string"
       },
     ]
-    resources = {
-      inputs = [
-        {
-          name = local.conf.labels.git_repo
-          type = "git"
-        },
-      ]
-    }
     steps = [
       {
         "env" = [
@@ -41,8 +31,8 @@ module "main" {
         ]
         image      = var.conf.images.terragrunt
         name       = "git-commit-push"
-        script     = file("${path.module}/scripts/git-commit-push.sh")
-        workingDir = "$(inputs.resources.${local.conf.labels.git_repo}.path)/$(params.${local.conf.labels.context_path})"
+        script     = file("${path.module}/../../git/scripts/git-commit-push.sh")
+        workingDir = local.conf.labels.working_dir
       },
       {
         "env" = [
@@ -74,7 +64,7 @@ module "main" {
             mountPath = "/root/.config/sops/age"
           }
         ]
-        workingDir = "$(inputs.resources.${local.conf.labels.git_repo}.path)/$(params.${local.conf.labels.context_path})"
+        workingDir = local.conf.labels.working_dir
       },
     ]
     volumes = [
@@ -83,6 +73,11 @@ module "main" {
         secret = {
           secretName = local.conf.secret_names.age_keys_file
         }
+      },
+    ]
+    workspaces = [
+      {
+        name = local.conf.labels.git_repo_workspace
       },
     ]
   }

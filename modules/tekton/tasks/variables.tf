@@ -7,7 +7,7 @@ variable "conf" {
       default     = optional(string)
       description = string
       name        = string
-      type        = string
+      type        = optional(string)
     }))
     resources = optional(object({
       inputs = optional(list(object({
@@ -60,6 +60,9 @@ variable "conf" {
       secret = object({
         secretName = string
       })
+    })))
+    workspaces = optional(list(object({
+      name = string
     })))
   })
 }

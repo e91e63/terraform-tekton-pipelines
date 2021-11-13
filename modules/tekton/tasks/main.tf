@@ -6,10 +6,11 @@ locals {
   conf = jsondecode(jsonencode(merge(
     defaults(var.conf, {}),
     # remove null values
-    { params = [for param in var.conf.params : {
-      for k, v in param : k => v if v != null
-    }] },
-    { resources = { for k, v in var.conf.resources : k => v if v != null } },
+    { params = [for param in var.conf.params : merge(
+      { type = "string" },
+      { for k, v in param : k => v if v != null },
+    )] },
+    var.conf.resources != null ? { resources = { for k, v in var.conf.resources : k => v if v != null } } : {},
     { steps = [for step in var.conf.steps : merge(
       # set default resources
       { resources = {} },
@@ -37,6 +38,7 @@ resource "kubernetes_manifest" "main" {
       results     = local.conf.results
       steps       = local.conf.steps
       volumes     = local.conf.volumes
-    } : k => v if v != [] }
+      workspaces  = local.conf.workspaces
+    } : k => v if v != [] && v != null }
   }
 }
