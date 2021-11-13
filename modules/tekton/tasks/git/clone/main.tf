@@ -28,7 +28,7 @@ module "main" {
         image      = var.conf.images.alpine
         name       = local.conf.name
         script     = file("${path.module}/../scripts/git-clone.sh")
-        workingDir = local.conf.labels.working_dir
+        workingDir = "$(workspaces.${local.conf.labels.git_repo_workspace}.path)"
       },
     ]
     workspaces = [

@@ -21,7 +21,7 @@ locals {
       git_repo_infra      = "git-repo-infra"
       git_repo_infra_url  = "git-repo-infra-url"
       version_tag         = "version-tag"
-      working_dir         = "$(workspace.${local.git_repo_workspace}.path)/$(params.${local.context_path}"
+      working_dir         = "$(workspace.${local.git_repo_workspace}.path)/$(params.${local.context_path})"
       webhook_token       = "webhook-token"
     } },
   )
