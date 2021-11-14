@@ -12,10 +12,10 @@ variable "conf" {
     service_accounts = optional(map(string))
     webhooks = object({
       middlewares = list(object({
-        name = string
+        name      = string
         namespace = string
       }))
-      subdomain   = optional(string)
+      subdomain = optional(string)
     })
     working_dir = optional(string)
   })

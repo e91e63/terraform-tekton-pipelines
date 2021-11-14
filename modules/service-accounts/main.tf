@@ -1,3 +1,12 @@
+module "janitor" {
+  source = "./janitor"
+
+  conf = {
+    name      = var.conf.janitor_name
+    namespace = var.conf.namespace
+  }
+}
+
 module "triggers" {
   source = "./triggers"
 

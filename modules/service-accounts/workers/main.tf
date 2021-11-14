@@ -7,9 +7,11 @@ locals {
 resource "kubernetes_service_account" "main" {
   metadata {
     annotations = {}
-    labels      = {}
-    name        = local.conf.name
-    namespace   = local.conf.namespace
+    labels = {
+      "app.kubernetes.io/name" = local.conf.name
+    }
+    name      = local.conf.name
+    namespace = local.conf.namespace
   }
   secret {
     name = var.conf.secret_names.docker_credentials

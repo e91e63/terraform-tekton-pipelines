@@ -1,51 +1,16 @@
 locals {
   conf = defaults(var.conf, {
-    name = "tekton-triggers"
+    name = "tekton-janitor"
   })
 }
 
-resource "kubernetes_cluster_role" "main" {
+resource "kubernetes_service_account" "main" {
   metadata {
     annotations = {}
     labels = {
       "app.kubernetes.io/name" = local.conf.name
     }
-    name = local.conf.name
-  }
-  rule {
-    api_groups = [
-      "triggers.tekton.dev",
-    ]
-    non_resource_urls = []
-    resource_names    = []
-    resources = [
-      "clustertriggerbindings",
-      "clusterinterceptors",
-    ]
-    verbs = [
-      "get",
-      "list",
-      "watch",
-    ]
-  }
-}
-
-resource "kubernetes_cluster_role_binding" "main" {
-  metadata {
-    annotations = {}
-    labels = {
-      "app.kubernetes.io/name" = local.conf.name
-    }
-    name = local.conf.name
-  }
-  role_ref {
-    api_group = "rbac.authorization.k8s.io"
-    kind      = "ClusterRole"
-    name      = kubernetes_role.main.metadata[0].name
-  }
-  subject {
-    kind      = "ServiceAccount"
-    name      = kubernetes_service_account.main.metadata[0].name
+    name      = local.conf.name
     namespace = local.conf.namespace
   }
 }
@@ -61,19 +26,17 @@ resource "kubernetes_role" "main" {
   }
   rule {
     api_groups = [
-      "triggers.tekton.dev",
+      "tekton.dev",
     ]
     resource_names = []
     resources = [
-      "eventlisteners",
-      "triggerbindings",
-      "triggertemplates",
-      "triggers",
+      "pipelineruns",
     ]
     verbs = [
+      "delete",
       "get",
-      "list",
       "watch",
+      "list",
     ]
   }
   rule {
@@ -129,6 +92,8 @@ resource "kubernetes_role" "main" {
   }
 }
 
+
+
 resource "kubernetes_role_binding" "main" {
   metadata {
     annotations = {}
@@ -146,17 +111,6 @@ resource "kubernetes_role_binding" "main" {
   subject {
     kind      = "ServiceAccount"
     name      = kubernetes_service_account.main.metadata[0].name
-    namespace = local.conf.namespace
-  }
-}
-
-resource "kubernetes_service_account" "main" {
-  metadata {
-    annotations = {}
-    labels = {
-      "app.kubernetes.io/name" = local.conf.name
-    }
-    name      = local.conf.name
     namespace = local.conf.namespace
   }
 }

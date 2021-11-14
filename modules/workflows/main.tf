@@ -30,44 +30,41 @@ locals {
   }
 }
 
+module "janitor" {
+  source = "../tekton/janitor"
+
+  conf = merge(local.conf, {
+    service_accounts = module.service_accounts.info
+  })
+}
+
 module "javascript" {
   source = "../javascript"
 
-  conf = merge(
-    local.conf,
-    {
-      tasks = {
-        build     = module.task_build_kaniko.info.name
-        deploy    = module.task_deploy_terragrunt.info.name
-        git_clone = module.task_git_clone.info.name
-      }
-      secret_names     = module.secrets.info
-      service_accounts = module.service_accounts.info
+  conf = merge(local.conf, {
+    tasks = {
+      build     = module.task_build_kaniko.info.name
+      deploy    = module.task_deploy_terragrunt.info.name
+      git_clone = module.task_git_clone.info.name
     }
-  )
+    secret_names     = module.secrets.info
+    service_accounts = module.service_accounts.info
+  })
   domain_info = var.domain_info
 }
 
 module "secrets" {
   source = "../secrets"
 
-  conf = {
-    namespace = local.conf.namespace
-    secrets   = local.conf.secrets
-  }
+  conf = local.conf
 }
 
 module "service_accounts" {
   source = "../service-accounts"
 
-  conf = {
-    namespace = local.conf.namespace
-    secret_names = {
-      docker_credentials = module.secrets.info.docker_credentials
-      git_ssh_key        = module.secrets.info.git_ssh_key
-    }
-    service_accounts = local.conf.service_accounts
-  }
+  conf = merge(local.conf, {
+    secret_names = module.secrets.info
+  })
 }
 
 module "task_build_kaniko" {
@@ -79,15 +76,9 @@ module "task_build_kaniko" {
 module "task_deploy_terragrunt" {
   source = "../tekton/tasks/deploy/terragrunt"
 
-  conf = merge(
-    local.conf,
-    {
-      secret_names = {
-        age_keys_file          = module.secrets.info.age_keys_file
-        terraform_remote_state = module.secrets.info.terraform_remote_state
-      }
-    }
-  )
+  conf = merge(local.conf, {
+    secret_names = module.secrets.info
+  })
 }
 
 module "task_git_clone" {
