@@ -16,7 +16,7 @@ module "main" {
 
   conf = {
     description = "run tests on repo"
-    name        = "${local.conf.name}-tests"
+    name        = "${local.conf.workflow_name}-tests"
     namespace   = local.conf.namespace
     params = [
       {

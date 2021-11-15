@@ -1,6 +1,6 @@
 locals {
   conf = defaults(var.conf, {
-    name = "javascript"
+    workflow_name = "javascript"
   })
 }
 

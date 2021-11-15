@@ -20,6 +20,7 @@ variable "conf" {
       git_clone_infra     = string
       git_repo            = string
       git_repo_code       = string
+      git_repo_code_name  = string
       git_repo_code_url   = string
       git_repo_infra      = string
       git_repo_infra_url  = string
@@ -28,7 +29,6 @@ variable "conf" {
       version_tag         = string
       webhook_token       = string
     })
-    name          = string
     namespace     = string
     pipeline_name = optional(string)
     tasks = object({

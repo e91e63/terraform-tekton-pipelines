@@ -15,7 +15,6 @@ variable "conf" {
       context_path       = string
       version_tag        = string
     })
-    name      = string
     namespace = string
     scripts = object({
       dependencies = string
@@ -25,7 +24,8 @@ variable "conf" {
       tests_unit   = string
       version_tag  = string
     })
-    working_dir = string
+    workflow_name = string
+    working_dir   = string
     workspaces = optional(list(object({
       name      = string
       workspace = string

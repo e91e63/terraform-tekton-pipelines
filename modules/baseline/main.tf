@@ -25,6 +25,7 @@ locals {
     git_clone_infra     = "git-clone-infra"
     git_repo            = "git-repo"
     git_repo_code       = "git-repo-code"
+    git_repo_code_name  = "git-repo-code-name"
     git_repo_code_url   = "git-repo-code-url"
     git_repo_infra      = "git-repo-infra"
     git_repo_infra_url  = "git-repo-infra-url"

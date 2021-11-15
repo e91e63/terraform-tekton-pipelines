@@ -5,9 +5,9 @@ variable "conf" {
       cypress = string
       node    = string
     })
-    labels      = map(string)
-    name        = string
-    namespace   = string
-    working_dir = string
+    labels        = map(string)
+    namespace     = string
+    workflow_name = string
+    working_dir   = string
   })
 }

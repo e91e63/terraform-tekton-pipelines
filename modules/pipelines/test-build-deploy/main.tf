@@ -1,14 +1,12 @@
 locals {
-  conf = defaults(var.conf, {
-    pipeline_name = "${var.conf.name}-test-build-deploy"
-  })
+  conf = defaults(var.conf, {})
 }
 
 module "event_listener" {
   source = "../../tekton/event-listener"
 
   conf = {
-    name               = local.conf.pipeline_name
+    name               = module.pipeline.info.name
     namespace          = local.conf.namespace
     serviceAccountName = local.conf.service_accounts.triggers
     triggers = [
@@ -39,7 +37,7 @@ module "event_listener" {
             }
           },
         ]
-        name = local.conf.pipeline_name
+        name = "${module.pipeline.info.name}-trigger"
         template = {
           ref = module.trigger_template.info.name
         }
@@ -52,8 +50,8 @@ module "pipeline" {
   source = "../../tekton/pipeline"
 
   conf = {
-    description = "${local.conf.name} test, build, and deploy pipeline"
-    name        = local.conf.pipeline_name
+    description = "${local.conf.workflow_name} test, build, and deploy pipeline"
+    name        = "${local.conf.workflow_name}-test-build-deploy"
     namespace   = local.conf.namespace
     params = [
       {
@@ -203,7 +201,7 @@ module "trigger_binding" {
   source = "../../tekton/trigger-binding"
 
   conf = {
-    name      = local.conf.pipeline_name
+    name      = "${module.pipeline.info.name}-trigger-binding"
     namespace = local.conf.namespace
     params = [
       {
@@ -217,6 +215,10 @@ module "trigger_binding" {
       {
         name  = local.conf.labels.docker_image_url
         value = "registry.digitalocean.com/dmikalova/$(body.project.namespace)/$(body.project.name)"
+      },
+      {
+        name  = local.conf.labels.git_repo_code_name
+        value = "$(body.project.namespace)-$(body.project.name)"
       },
       {
         name  = local.conf.labels.git_repo_code_url
@@ -234,7 +236,7 @@ module "trigger_template" {
   source = "../../tekton/trigger-template"
 
   conf = {
-    name      = local.conf.pipeline_name
+    name      = "${module.pipeline.info.name}-trigger-binding"
     namespace = local.conf.namespace
     params = [
       {
@@ -250,7 +252,11 @@ module "trigger_template" {
         name        = local.conf.labels.docker_image_url
       },
       {
-        description = "${local.conf.name} repo to build, test, and deploy"
+        description = "${local.conf.workflow_name} repo name"
+        name        = local.conf.labels.git_repo_code_name
+      },
+      {
+        description = "${local.conf.workflow_name} repo to build, test, and deploy"
         name        = local.conf.labels.git_repo_code_url
       },
       {
@@ -261,6 +267,10 @@ module "trigger_template" {
     resourcetemplates = [
       {
         kind = "PipelineRun"
+        metadata = {
+          generateName = "$(tt.params.${local.conf.labels.git_repo_code_name})-${module.pipeline.info.name}-$(uid)"
+          namespace    = var.conf.namespace
+        }
         spec = {
           params = [
             {
@@ -334,7 +344,7 @@ resource "kubernetes_secret" "webhook_token" {
   metadata {
     annotations = {}
     labels      = {}
-    name        = "${local.conf.name}-webhook-token"
+    name        = "${module.pipeline.info.name}-webhook-token"
     namespace   = local.conf.namespace
   }
   type = "Opaque"

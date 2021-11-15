@@ -10,10 +10,6 @@ locals {
       { for k, v in template : k => v if v != null },
       {
         apiVersion = "tekton.dev/v1beta1"
-        metadata = {
-          generateName = "${var.conf.name}-$(uid)"
-          namespace    = var.conf.namespace
-        }
       },
     )] },
   )))

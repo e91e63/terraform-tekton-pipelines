@@ -32,7 +32,7 @@ echo "$PIPELINES" | while read -r PIPELINE; do
     # Unknown is running
 
     # Delete old failed runs to release persistent volume claims
-    RUNS_FAILED=$(echo "${RUNS}" | grep '^False')
+    RUNS_FAILED=$(echo "${RUNS}" | { grep '^False' || true; })
     OLD=$(date -d@"$(($(date +%s) - FAIL_TTL_MINUTES * 60))" -Is --utc | sed 's/+0000/Z/')
     RUNS_FAILED_OLD=$(echo "${RUNS_FAILED}" | awk '$3 <= "'"${OLD}"'" {print $2}')
     echo "  deleting failed old runs:"
@@ -50,7 +50,7 @@ echo "$PIPELINES" | while read -r PIPELINE; do
     echo "  deleting successful excess runs:"
     echo "$RUNS_SUCCESS_EXCESS" | while read -r RUN; do
         test -n "${RUN}" || continue
-        kubectl delete "${RUN}" &&
+        kubectl delete "pipelinerun.tekton.dev/${RUN}" &&
             echo "    $(date -Is) PipelineRun ${RUN} deleted." ||
             echo "    $(date -Is) Unable to delete PipelineRun ${RUN}."
     done
