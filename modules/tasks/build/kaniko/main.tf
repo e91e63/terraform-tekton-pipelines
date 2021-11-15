@@ -34,7 +34,6 @@ module "main" {
     steps = [
       {
         args = [
-          "--cache=true",
           "--context=${local.conf.working_dir}",
           "--destination=$(params.${local.conf.labels.docker_image_url}):$(params.${local.conf.labels.version_tag})",
           "--dockerfile=${local.conf.working_dir}/Dockerfile",
