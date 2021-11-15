@@ -2,12 +2,15 @@ locals {
   conf = defaults(merge(
     var.conf,
     { labels = merge(local.labels, var.conf.labels) },
-    ), {
-    webhooks = {
-      subdomain = "webhooks"
-    }
-    working_dir = "$(workspaces.${local.labels.git_repo_workspace}.path)/$(params.${local.labels.context_path})"
+    ),
+    {
+      webhooks = {
+        subdomain = "webhooks"
+      }
+      working_dir = "$(workspaces.${local.labels.git_repo_workspace}.path)/$(params.${local.labels.context_path})"
   })
+
+  # labels used in tasks and pipelines
   labels = {
     age_keys_file       = "age-keys-file"
     context_path        = "context-path"
@@ -85,4 +88,9 @@ module "task_git_clone" {
   source = "../tekton/tasks/git/clone"
 
   conf = local.conf
+}
+
+terraform {
+  experiments      = [module_variable_optional_attrs]
+  required_version = "~> 1"
 }
