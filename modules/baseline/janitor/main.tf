@@ -16,7 +16,8 @@ resource "kubernetes_cron_job" "main" {
     namespace = local.conf.namespace
   }
   spec {
-    concurrency_policy = "Forbid"
+    concurrency_policy        = "Forbid"
+    failed_jobs_history_limit = 1
     job_template {
       metadata {
         labels = {
@@ -57,6 +58,10 @@ resource "kubernetes_cron_job" "main" {
                 name  = "SUCCESS_KEEP_NUM"
                 value = 5
               }
+              env {
+                name  = "SUCCESS_TTL_MINUTES"
+                value = 120
+              }
               image = local.conf.images.kubectl
               name  = "kubectl"
               resources {
@@ -76,6 +81,7 @@ resource "kubernetes_cron_job" "main" {
         }
       }
     }
-    schedule = "*/15 * * * *"
+    schedule                      = "*/15 * * * *"
+    successful_jobs_history_limit = 1
   }
 }
