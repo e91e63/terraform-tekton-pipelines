@@ -35,3 +35,8 @@ module "workers" {
     secrets   = local.conf.secrets
   }
 }
+
+terraform {
+  experiments      = [module_variable_optional_attrs]
+  required_version = "~> 1"
+}

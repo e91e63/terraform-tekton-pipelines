@@ -85,3 +85,14 @@ resource "kubernetes_cron_job" "main" {
     successful_jobs_history_limit = 1
   }
 }
+
+terraform {
+  experiments = [module_variable_optional_attrs]
+  required_providers {
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2"
+    }
+  }
+  required_version = "~> 1"
+}
