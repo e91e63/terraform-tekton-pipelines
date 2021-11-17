@@ -1,7 +1,7 @@
 # Tekton Pipelines Modules
 
 [![maintained by dmikalova.tech](https://img.shields.io/static/v1?&color=ccff90&label=maintained%20by&labelColor=424242&logo=&logoColor=fff&message=dmikalova.tech&&style=flat-square)](https://www.terraform.io/)
-[![license](https://img.shields.io/static/v1?&color=e9e9e9&label=license&labelColor=424242&logo=&logoColor=fff&message=apache&&style=flat-square)](LICENSE)
+[![license](https://img.shields.io/static/v1?&color=e9e9e9&label=license&labelColor=424242&logo=&logoColor=fff&message=apache-2.0&&style=flat-square)](LICENSE)
 
 [![terraform](https://img.shields.io/static/v1?&color=844fba&label=%20&labelColor=424242&logo=terraform&logoColor=fff&message=terraform&&style=flat-square)](https://www.terraform.io/)
 [![tekton](https://img.shields.io/static/v1?&color=fd495c&label=%20&labelColor=424242&logo=tekton&logoColor=fff&message=tekton&&style=flat-square)](https://www.kubernetes.io/)
