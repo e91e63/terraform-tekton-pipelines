@@ -7,13 +7,17 @@ variable "conf" {
         })
         docker = object({
           credentials_write = string
-          registry_name     = string
           server_url        = string
         })
-        git = object({
-          domain          = string
-          known_hosts     = string
-          private_key_pem = string
+        git_ssh_key = object({
+          domain             = string
+          known_hosts        = string
+          private_key_base64 = string
+        })
+        gpg = object({
+          key_id             = string
+          private_key_base64 = string
+          trust_level_base64 = string
         })
         terraform_remote_state = object({
           access_key_id     = string

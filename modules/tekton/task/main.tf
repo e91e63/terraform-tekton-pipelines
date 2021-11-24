@@ -1,25 +1,65 @@
+terraform {
+  experiments      = [module_variable_optional_attrs]
+  required_version = "~> 1"
+  required_providers {
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2"
+    }
+  }
+}
+
 locals {
-  # TODO: write a provider that removes all null values
-  # json de-encoding resolves diffs in kubernetes provider from list(object()) types
-  # https://github.com/hashicorp/terraform-provider-kubernetes/issues/1482
-  # for loops remove null values
-  conf = jsondecode(jsonencode(merge(
+  conf = merge(
     defaults(var.conf, {}),
-    # remove null values
-    { params = [for param in var.conf.params : merge(
-      { type = "string" },
-      { for k, v in param : k => v if v != null },
-    )] },
-    { steps = [for step in var.conf.steps : merge(
-      # set default resources
-      { resources = {} },
-      { for k, v in step : k => v if v != null },
-      { for k, v in step : k => [
-        for env in step[k] : { for ek, ev in env : ek => ev if ev != null }
-        ] if k == "env" && v != null
-      },
-    )] },
-  )))
+    {
+      spec = merge(
+        # remove null values
+        { for k, v in var.conf.spec : k => v if v != null },
+        { for k, v in var.conf.spec : k => [
+          for param in flatten(var.conf.spec[k]) : merge(
+            # set default type
+            { type = "string" },
+            { for pk, pv in param : pk => pv if pv != null },
+          )] if k == "params" && v != null
+        },
+        { for k, v in var.conf.spec : k => [
+          for result in flatten(var.conf.spec[k]) : merge(
+            { for rk, rv in result : rk => rv if rv != null },
+          )] if k == "results" && v != null
+        },
+        { for k, v in var.conf.spec : k => [
+          for step in flatten(var.conf.spec.steps) : merge(
+            # set default resources
+            { resources = {} },
+            { for k, v in step : k => v if v != null },
+            { for k, v in step : k => [
+              for arg in flatten(step[k]) : arg
+            ] if k == "args" && v != null },
+            { for k, v in step : k => [
+              for env in flatten(step[k]) : {
+                for ek, ev in env : ek => ev if ev != null
+            }] if k == "env" && v != null },
+            { for k, v in step : k => [
+              for volumeMount in flatten(step[k]) : {
+                for vk, vv in volumeMount : vk => vv if vv != null
+            }] if k == "volumeMounts" && v != null },
+          )
+          ] if k == "steps" && v != null
+        },
+        { for k, v in var.conf.spec : k => [
+          for volume in flatten(var.conf.spec[k]) : merge(
+            { for vk, vv in volume : vk => vv if vv != null },
+          )] if k == "volumes" && v != null
+        },
+        { for k, v in var.conf.spec : k => [
+          for workspace in flatten(var.conf.spec[k]) : merge(
+            { for wk, wv in workspace : wk => wv if wv != null },
+          )] if k == "workspaces" && v != null
+        },
+      )
+    },
+  )
 }
 
 resource "kubernetes_manifest" "main" {
@@ -30,24 +70,6 @@ resource "kubernetes_manifest" "main" {
       name      = local.conf.name
       namespace = local.conf.namespace
     }
-    spec = { for k, v in {
-      description = local.conf.description
-      params      = local.conf.params
-      results     = local.conf.results
-      steps       = local.conf.steps
-      volumes     = local.conf.volumes
-      workspaces  = local.conf.workspaces
-    } : k => v if v != [] && v != null }
-  }
-}
-
-terraform {
-  experiments      = [module_variable_optional_attrs]
-  required_version = "~> 1"
-  required_providers {
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2"
-    }
+    spec = local.conf.spec
   }
 }

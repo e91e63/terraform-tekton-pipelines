@@ -1,3 +1,8 @@
+terraform {
+  experiments      = [module_variable_optional_attrs]
+  required_version = "~> 1"
+}
+
 module "baseline" {
   source = "./modules/baseline"
 
@@ -9,9 +14,4 @@ module "javascript" {
 
   conf        = module.baseline.info
   domain_info = var.domain_info
-}
-
-terraform {
-  experiments      = [module_variable_optional_attrs]
-  required_version = "~> 1"
 }

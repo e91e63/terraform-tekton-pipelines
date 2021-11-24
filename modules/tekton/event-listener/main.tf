@@ -1,18 +1,42 @@
+terraform {
+  experiments      = [module_variable_optional_attrs]
+  required_version = "~> 1"
+  required_providers {
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2"
+    }
+  }
+}
+
 locals {
-  # json de-encoding resolves diffs in kubernetes provider from list(object()) types
-  # https://github.com/hashicorp/terraform-provider-kubernetes/issues/1482
-  # for loops remove null values
-  conf = jsondecode(jsonencode(merge(
+  conf = merge(
     defaults(var.conf, {}),
-    # remove null values
-    { triggers = [for trigger in var.conf.triggers : merge(
-      { for k, v in trigger : k => v if v != null },
-      { bindings = [for binding in trigger.bindings : merge(
-        { for k, v in binding : k => v if v != null },
-        { kind = binding.kind != null ? binding.kind : "TriggerBinding" }
-      )] },
-    )] },
-  )))
+    {
+      spec = {
+        namespaceSelector  = {}
+        resources          = {}
+        serviceAccountName = var.conf.spec.serviceAccountName
+        triggers = [for trigger in flatten(var.conf.spec.triggers) : merge(
+          { for k, v in trigger : k => v if v != null },
+          { bindings = [for binding in flatten(trigger.bindings) : {
+            kind = binding.kind != null ? binding.kind : "TriggerBinding"
+            ref  = binding.ref
+          }] },
+          { interceptors = [for interceptor in flatten(trigger.interceptors) : {
+            params = flatten([
+              [for param in interceptor.params[0] : {
+                name  = param.name
+                value = flatten(param.value)
+              }],
+              interceptor.params[1],
+            ])
+            ref = interceptor.ref
+          }] },
+        )]
+      }
+    }
+  )
 }
 
 resource "kubernetes_manifest" "main" {
@@ -26,22 +50,6 @@ resource "kubernetes_manifest" "main" {
       name      = local.conf.name
       namespace = local.conf.namespace
     }
-    spec = {
-      namespaceSelector  = {}
-      resources          = {}
-      serviceAccountName = local.conf.serviceAccountName
-      triggers           = local.conf.triggers
-    }
-  }
-}
-
-terraform {
-  experiments      = [module_variable_optional_attrs]
-  required_version = "~> 1"
-  required_providers {
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2"
-    }
+    spec = local.conf.spec
   }
 }

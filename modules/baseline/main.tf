@@ -1,3 +1,8 @@
+terraform {
+  experiments      = [module_variable_optional_attrs]
+  required_version = "~> 1"
+}
+
 locals {
   conf = defaults(
     # merge is used to set multiple label values
@@ -12,7 +17,7 @@ locals {
       working_dir = "$(workspaces.${local.labels.git_repo_workspace}.path)/$(params.${local.labels.context_path})"
   })
 
-  # labels used in tasks and pipelines
+  # labels values shared across Tekton CRDs
   labels = {
     age_keys_file       = "age-keys-file"
     context_path        = "context-path"
@@ -31,6 +36,7 @@ locals {
     git_repo_infra_url  = "git-repo-infra-url"
     git_repo_url        = "git-repo-url"
     git_repo_workspace  = "git-repo-workspace"
+    gpg_key             = "gpg-key"
     version_tag         = "version-tag"
     webhook_token       = "webhook-token"
   }
@@ -79,9 +85,4 @@ module "task_git_clone" {
   source = "../tasks/git/clone"
 
   conf = local.conf
-}
-
-terraform {
-  experiments      = [module_variable_optional_attrs]
-  required_version = "~> 1"
 }

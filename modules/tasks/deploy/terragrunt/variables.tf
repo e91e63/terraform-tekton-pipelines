@@ -9,12 +9,14 @@ variable "conf" {
       docker_image_digest = string
       git_repo            = string
       git_repo_workspace  = string
+      gpg_key             = string
     })
     name      = optional(string)
     namespace = string
     secrets = object({
       names = object({
         age_keys_file          = string
+        gpg_key                = string
         terraform_remote_state = string
       })
     })

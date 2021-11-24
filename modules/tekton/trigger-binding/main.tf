@@ -1,5 +1,23 @@
+terraform {
+  experiments      = [module_variable_optional_attrs]
+  required_version = "~> 1"
+  required_providers {
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2"
+    }
+  }
+}
+
 locals {
-  conf = jsondecode(jsonencode(defaults(var.conf, {})))
+  conf = merge(
+    defaults(var.conf, {}),
+    {
+      spec = {
+        params = flatten(var.conf.spec.params)
+      }
+    }
+  )
 }
 
 resource "kubernetes_manifest" "main" {
@@ -10,19 +28,6 @@ resource "kubernetes_manifest" "main" {
       name      = local.conf.name
       namespace = local.conf.namespace
     }
-    spec = {
-      params = local.conf.params
-    }
-  }
-}
-
-terraform {
-  experiments      = [module_variable_optional_attrs]
-  required_version = "~> 1"
-  required_providers {
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2"
-    }
+    spec = local.conf.spec
   }
 }

@@ -1,3 +1,14 @@
+terraform {
+  experiments = [module_variable_optional_attrs]
+  required_providers {
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2"
+    }
+  }
+  required_version = "~> 1"
+}
+
 locals {
   conf = defaults(var.conf, {
     name = "tekton-janitor"
@@ -84,15 +95,4 @@ resource "kubernetes_cron_job" "main" {
     schedule                      = "*/15 * * * *"
     successful_jobs_history_limit = 1
   }
-}
-
-terraform {
-  experiments = [module_variable_optional_attrs]
-  required_providers {
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2"
-    }
-  }
-  required_version = "~> 1"
 }

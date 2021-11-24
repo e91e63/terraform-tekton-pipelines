@@ -1,3 +1,8 @@
+terraform {
+  experiments      = [module_variable_optional_attrs]
+  required_version = "~> 1"
+}
+
 locals {
   conf = defaults(var.conf, {})
 }
@@ -23,9 +28,4 @@ module "main" {
       }
     },
   )
-}
-
-terraform {
-  experiments      = [module_variable_optional_attrs]
-  required_version = "~> 1"
 }

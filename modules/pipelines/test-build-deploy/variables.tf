@@ -3,6 +3,7 @@ variable "conf" {
     bindings = object({
       git_repo_infra_url = string
     })
+    container_registry_endpoint = string
     interceptors = object({
       git = object({
         name        = string
