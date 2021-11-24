@@ -7,7 +7,7 @@ locals {
   conf = defaults(var.conf, {
     name = "terragrunt"
   })
-  gpg_dir = "/root/.config/gpg"
+  gpg_secret_dir = "/root/.config/gpg"
 }
 
 module "main" {
@@ -32,8 +32,8 @@ module "main" {
         {
           "env" = [[
             {
-              name  = "GPG_DIR"
-              value = local.gpg_dir
+              name  = "GPG_SECRET_DIR"
+              value = local.gpg_secret_dir
             },
             {
               name  = "IMAGE_DIGEST"
@@ -45,7 +45,7 @@ module "main" {
           script = file("${path.module}/../../git/scripts/git-commit-push.sh")
           volumeMounts = [[
             {
-              mountPath = local.gpg_dir
+              mountPath = local.gpg_secret_dir
               name      = local.conf.labels.gpg_key
             },
           ]]

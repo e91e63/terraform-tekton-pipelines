@@ -62,9 +62,12 @@ resource "kubernetes_secret" "git_ssh_key" {
 
 resource "kubernetes_secret" "gpg_key" {
   data = {
-    "key-id.txt"     = local.conf.secrets.data.gpg.key_id
-    "private.key"    = base64decode(local.conf.secrets.data.gpg.private_key_base64)
-    "trustlevel.txt" = base64decode(local.conf.secrets.data.gpg.trust_level_base64)
+    "email.txt"       = local.conf.secrets.data.gpg.email
+    "key-grip.txt"    = local.conf.secrets.data.gpg.key_grip
+    "key-id.txt"      = local.conf.secrets.data.gpg.key_id
+    "passphrase.txt"  = local.conf.secrets.data.gpg.passphrase
+    "private.key"     = base64decode(local.conf.secrets.data.gpg.private_key_base64)
+    "trust-level.txt" = base64decode(local.conf.secrets.data.gpg.trust_level_base64)
   }
   immutable = false
   metadata {

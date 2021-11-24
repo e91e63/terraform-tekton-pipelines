@@ -71,7 +71,7 @@ resource "kubernetes_cron_job" "main" {
               }
               env {
                 name  = "SUCCESS_TTL_MINUTES"
-                value = 120
+                value = 360
               }
               image = local.conf.images.kubectl
               name  = "kubectl"

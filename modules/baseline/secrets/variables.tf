@@ -15,7 +15,10 @@ variable "conf" {
           private_key_base64 = string
         })
         gpg = object({
+          email              = string
+          key_grip           = string
           key_id             = string
+          passphrase         = string
           private_key_base64 = string
           trust_level_base64 = string
         })
