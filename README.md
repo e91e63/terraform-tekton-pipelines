@@ -1,11 +1,11 @@
 # Tekton Pipelines Modules
 
-[![maintained by dmikalova.tech](https://img.shields.io/static/v1?&color=ccff90&label=maintained%20by&labelColor=424242&logo=&logoColor=fff&message=dmikalova.tech&&style=flat-square)](https://www.dmikalova.tech/)
-[![terraform](https://img.shields.io/static/v1?&color=844fba&label=%20&labelColor=424242&logo=terraform&logoColor=fff&message=terraform&&style=flat-square)](https://www.terraform.io/)
+[![maintained by dmikalova.tech](https://img.shields.io/static/v1?&color=ccff90&label=maintained%20by&labelColor=424242&logo=&logoColor=fff&message=dmikalova.tech&&style=flat-square)](https://dmikalova.tech/)
+[![terraform](https://img.shields.io/static/v1?&color=844fba&label=%20&labelColor=424242&logo=terraform&logoColor=fff&message=terraform&&style=flat-square)](https://terraform.io/)
 [![tekton](https://img.shields.io/static/v1?&color=fd495c&label=%20&labelColor=424242&logo=tekton&logoColor=fff&message=tekton&&style=flat-square)](https://www.kubernetes.io/)
 [![kubernetes](https://img.shields.io/static/v1?&color=326ce5&label=%20&labelColor=424242&logo=kubernetes&logoColor=fff&message=kubernetes&&style=flat-square)](https://www.kubernetes.io/)
 
-This repo contains [Terraform modules](https://www.terraform.io/docs/language/modules/index.html) for managing [Tekton Pipelines](https://tekton.dev/) in [Kubernetes](https://kubernetes.io/).
+This repo contains [Terraform modules](https://terraform.io/docs/language/modules/index.html) for managing [Tekton Pipelines](https://tekton.dev/) in [Kubernetes](https://kubernetes.io/).
 
 See [dmikalova/infrastructure](https://github.com/dmikalova/infrastructure/blob/main/digitalocean/e91e63/services/tekton/workflows/terragrunt.hcl) for a fully configured example deployed with [Terragrunt](https://terragrunt.gruntwork.io/).
 

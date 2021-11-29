@@ -1,6 +1,6 @@
 # Baseline Secrets
 
-This folder contains [Terraform modules](https://www.terraform.io/docs/language/modules/index.html) for creating [Kubernetes secrets](https://kubernetes.io/docs/concepts/configuration/secret/). The module outputs secret names that can be passed into Kubernetes service accounts or Tekton tasks.
+This folder contains [Terraform modules](https://terraform.io/docs/language/modules/index.html) for creating [Kubernetes secrets](https://kubernetes.io/docs/concepts/configuration/secret/). The module outputs secret names that can be passed into Kubernetes service accounts or Tekton tasks.
 
 ## Secrets
 
