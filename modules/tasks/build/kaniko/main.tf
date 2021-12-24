@@ -45,6 +45,7 @@ module "main" {
             "--dockerfile=${local.conf.working_dir}/Dockerfile",
             "--image-name-tag-with-digest-file=$(results.${local.conf.labels.docker_image_digest}.path)",
             "--push-retry=4",
+            "--single-snapshot",
           ]]
           command = ["/kaniko/executor"]
           "env" = [[
